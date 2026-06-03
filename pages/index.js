@@ -40,7 +40,7 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.15)' }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0, boxShadow: `0 0 6px ${dotColor}` }} />
         <input
           value={value}
@@ -87,7 +87,7 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
                 <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>
                   {p.structured_formatting?.main_text || p.description}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2, fontFamily: "'DM Mono', monospace", letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', marginTop: 2, fontFamily: "'DM Mono', monospace", letterSpacing: '0.04em' }}>
                   {p.structured_formatting?.secondary_text || ''}
                 </div>
               </div>
@@ -432,15 +432,15 @@ function Viewer({ steps, origin, destination, travelMode, routeInfo, onClose }) 
 
       {/* Speed */}
       <div style={{ padding: '6px 14px', background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.35)', letterSpacing: '.1em', marginRight: 4 }}>SPEED</span>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.6)', letterSpacing: '.1em', marginRight: 4 }}>SPEED</span>
         {SPEED_STEPS.map((s, i) => (
           <button key={s.label} onClick={() => setSpeed(i)} style={{
             flex: 1, padding: '6px 0',
             background: speed === i ? 'rgba(255,200,80,.2)' : 'rgba(255,255,255,.06)',
-            border: `1px solid ${speed === i ? 'rgba(255,200,80,.7)' : 'rgba(255,255,255,.1)'}`,
+            border: `1px solid ${speed === i ? 'rgba(255,200,80,.7)' : 'rgba(255,255,255,.22)'}`,
             borderRadius: 8,
             fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: speed === i ? 600 : 400,
-            color: speed === i ? '#ffc850' : 'rgba(255,255,255,.35)',
+            color: speed === i ? '#ffc850' : 'rgba(255,255,255,.6)',
             cursor: 'pointer', transition: 'all .15s',
           }}>{s.label}</button>
         ))}
@@ -579,17 +579,17 @@ export default function Home() {
         <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 200 }}>
           <div style={{ width: 42, height: 42, border: '2px solid rgba(255,255,255,.15)', borderTopColor: 'rgba(255,255,255,.8)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', fontFamily: "'DM Mono',monospace", letterSpacing: '.06em' }}>{loaderMsg.ja}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.35)', letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.6)', letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.25)', letterSpacing: '.08em' }}>{loaderMsg.detail}</div>
         </div>
       )}
 
       <div style={{ background: '#0e0e0e', minHeight: '100vh', paddingBottom: 32 }}>
         {/* Header */}
-        <div style={{ padding: '28px 24px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div style={{ padding: '28px 24px 16px', borderBottom: '1px solid rgba(255,255,255,.15)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1, color: '#fff' }}>Street <span style={{ color: '#ffc850' }}>Journey</span></div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.35)', letterSpacing: '.1em', marginTop: 5 }}>行きたい場所へ、すぐ行こう。 / Go anywhere. Right now.</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.6)', letterSpacing: '.1em', marginTop: 5 }}>行きたい場所へ、すぐ行こう。 / Go anywhere. Right now.</div>
           </div>
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', border: '1px solid rgba(255,255,255,.12)', padding: '4px 8px', borderRadius: 20 }}>BETA v3</div>
         </div>
@@ -609,10 +609,10 @@ export default function Home() {
             {modes.map(m2 => (
               <button key={m2.id} onClick={() => setMode(m2.id)} style={{
                 flex: 1, padding: '10px 4px',
-                border: `1px solid ${mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.1)'}`,
+                border: `1px solid ${mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.22)'}`,
                 borderRadius: 8,
                 background: mode === m2.id ? 'rgba(255,200,80,.12)' : 'rgba(255,255,255,.04)',
-                color: mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.35)',
+                color: mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.6)',
                 cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '.04em',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .15s',
               }}>
@@ -640,8 +640,8 @@ export default function Home() {
 
 function Card({ title, children }) {
   return (
-    <div style={{ margin: '14px 16px 0', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'visible' }}>
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.14em', color: 'rgba(255,255,255,.25)', textTransform: 'uppercase' }}>{title}</div>
+    <div style={{ margin: '14px 16px 0', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.18)', borderRadius: 12, overflow: 'visible' }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.15)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.14em', color: 'rgba(255,255,255,.25)', textTransform: 'uppercase' }}>{title}</div>
       {children}
     </div>
   );
