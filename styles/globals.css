@@ -1,0 +1,7 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #f5f0e8; --surface: #fff; --ink: #1a1410; --muted: #9a9080;
+  --rule: #e0d8cc; --amber: #c8860a; --red: #c0392b; --green: #2d7a4f;
+}
+html, body { height: 100%; overflow: hidden; background: var(--bg); }
+* { font-family: 'Shippori Mincho', serif; }
