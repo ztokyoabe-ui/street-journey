@@ -40,7 +40,7 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--rule)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0, boxShadow: `0 0 6px ${dotColor}` }} />
         <input
           value={value}
@@ -53,19 +53,19 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
           spellCheck={false}
           style={{
             flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: 15, color: 'var(--ink)', fontFamily: 'inherit', minWidth: 0,
+            fontSize: 15, color: '#fff', fontFamily: 'inherit', minWidth: 0,
           }}
         />
-        {loading && <div style={{ width: 14, height: 14, border: '2px solid var(--rule)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .6s linear infinite', flexShrink: 0 }} />}
-        {value && <button onClick={() => { onChange(''); clearSuggestions(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>}
+        {loading && <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.15)', borderTopColor: 'rgba(255,255,255,.7)', borderRadius: '50%', animation: 'spin .6s linear infinite', flexShrink: 0 }} />}
+        {value && <button onClick={() => { onChange(''); clearSuggestions(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.3)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>}
       </div>
 
       {suggestions.length > 0 && focused && (
         <div style={{
           position: 'absolute', left: 0, right: 0, top: '100%',
-          background: '#fff', border: '1px solid var(--rule)', borderTop: 'none',
+          background: '#1a1a1a', border: '1px solid rgba(255,255,255,.12)', borderTop: 'none',
           borderRadius: '0 0 12px 12px', zIndex: 300,
-          boxShadow: '0 12px 32px rgba(0,0,0,.12)', overflow: 'hidden',
+          boxShadow: '0 12px 32px rgba(0,0,0,.6)', overflow: 'hidden',
           maxHeight: 280, overflowY: 'auto',
         }}>
           {suggestions.map((p, i) => (
@@ -75,18 +75,19 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
               onTouchEnd={e => { e.preventDefault(); handleSelect(p); }}
               style={{
                 padding: '12px 16px', cursor: 'pointer',
-                borderBottom: i < suggestions.length - 1 ? '1px solid var(--rule)' : 'none',
+                borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,.06)' : 'none',
                 display: 'flex', alignItems: 'center', gap: 12,
+                background: 'transparent', transition: 'background .1s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.06)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div style={{ fontSize: 16, flexShrink: 0, color: 'var(--muted)' }}>📍</div>
+              <div style={{ fontSize: 16, flexShrink: 0, color: 'rgba(255,255,255,.3)' }}>📍</div>
               <div>
-                <div style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>
+                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>
                   {p.structured_formatting?.main_text || p.description}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: "'DM Mono', monospace", letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', marginTop: 2, fontFamily: "'DM Mono', monospace", letterSpacing: '0.04em' }}>
                   {p.structured_formatting?.secondary_text || ''}
                 </div>
               </div>
@@ -99,14 +100,17 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label })
 }
 
 /* ─────────── VIEWER ─────────── */
-function Viewer({ steps, origin, destination, travelMode, onClose }) {
+function Viewer({ steps, origin, destination, travelMode, routeInfo, onClose }) {
   const [cur, setCur] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(5);
+  const [speed, setSpeed] = useState(2); // index: 0=1× 1=2× 2=3× 3=5× 4=10×
   const [filmVisible, setFilmVisible] = useState(false);
   const [activeImg, setActiveImg] = useState('A');
   const [isRecording, setIsRecording] = useState(false);
   const [minimapSrc, setMinimapSrc] = useState('');
+  const [minimapMode, setMinimapMode] = useState('current'); // 'current' | 'route'
+  const [routeMapSrc, setRouteMapSrc] = useState('');
+  const speedRef = useRef(2);
 
   const imgARef = useRef(null);
   const imgBRef = useRef(null);
@@ -119,11 +123,19 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
   const playingRef = useRef(playing);
   const activeImgRef = useRef(activeImg);
 
-  const interval = Math.round(2200 - speed * 190);
+  const SPEED_STEPS = [
+    { label: '1×', interval: 2000 },
+    { label: '2×', interval: 1000 },
+    { label: '3×', interval: 650 },
+    { label: '5×', interval: 380 },
+    { label: '10×', interval: 180 },
+  ];
+  const interval = SPEED_STEPS[speed]?.interval ?? 650;
 
   useEffect(() => { curRef.current = cur; }, [cur]);
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { activeImgRef.current = activeImg; }, [activeImg]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
 
   // SV URL
   const svUrl = useCallback((step, idx) => {
@@ -162,6 +174,17 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
     return `/api/staticmap?lat=${step.lat}&lng=${step.lng}&path=${encodeURIComponent(pathPts)}`;
   }, [steps]);
 
+  // ルート全体マップ（start〜end中点を中心に広いズーム）
+  const routeOverviewUrl = useCallback((step) => {
+    const first = steps[0], last = steps[steps.length - 1];
+    const midLat = (first.lat + last.lat) / 2;
+    const midLng = (first.lng + last.lng) / 2;
+    const pathPts = steps.filter((_, i) => i % 3 === 0 || i === steps.length - 1)
+      .map(p => `${p.lat},${p.lng}`).join('|');
+    // 現在地マーカーとして current step を渡す
+    return `/api/staticmap?lat=${midLat}&lng=${midLng}&path=${encodeURIComponent(pathPts)}&marker=${step.lat},${step.lng}&zoom=13`;
+  }, [steps]);
+
   // Crossfade
   const crossfade = useCallback((url) => {
     const imgA = imgARef.current, imgB = imgBRef.current;
@@ -190,12 +213,21 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
     } else {
       crossfade(url);
     }
-    // Minimap debounce
-    clearTimeout(minimapTimerRef.current);
-    minimapTimerRef.current = setTimeout(() => {
+    // ミニマップ更新：高速時(3×以上)はdebounceなしで即時更新
+    const currentSpeed = speedRef.current;
+    const currentInterval = SPEED_STEPS[currentSpeed]?.interval ?? 650;
+    const isHighSpeed = currentSpeed >= 3; // 5×・10×
+    const updateMinimap = () => {
       setMinimapSrc(staticMapUrlDirect(step));
-    }, 500);
-  }, [steps, directSvUrl, crossfade, staticMapUrlDirect]);
+      setRouteMapSrc(routeOverviewUrl(step));
+    };
+    clearTimeout(minimapTimerRef.current);
+    if (isHighSpeed) {
+      updateMinimap();
+    } else {
+      minimapTimerRef.current = setTimeout(updateMinimap, Math.min(currentInterval, 500));
+    }
+  }, [steps, directSvUrl, crossfade, staticMapUrlDirect, routeOverviewUrl]);
 
   // Init
   useEffect(() => {
@@ -298,8 +330,10 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'rgba(255,255,255,.9)', letterSpacing: '.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {origin} → {destination}
           </div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginTop: 2 }}>
-            {steps.length} waypoints · {travelMode}
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span>{steps.length} waypoints · {travelMode}</span>
+            {routeInfo?.duration && <span style={{ color: 'rgba(255,200,80,.85)' }}>🕐 {routeInfo.duration}</span>}
+            {routeInfo?.distance && <span style={{ color: 'rgba(255,200,80,.85)' }}>📍 {routeInfo.distance}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -307,7 +341,7 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
           <Btn onClick={toggleRecord} style={{ color: isRecording ? '#ff6060' : undefined, background: isRecording ? 'rgba(255,60,60,.25)' : undefined }}>
             {isRecording ? '⏹ STOP' : '⏺ REC'}
           </Btn>
-          <Btn onClick={onClose}>✕</Btn>
+          <Btn onClick={onClose} style={{ padding: '7px 14px', fontSize: 10, letterSpacing: '.06em' }}>← 検索に戻る</Btn>
         </div>
       </div>
 
@@ -321,10 +355,31 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, background: 'linear-gradient(transparent,rgba(0,0,0,.85))', pointerEvents: 'none', zIndex: 3 }} />
 
         {/* Minimap */}
-        <div style={{ position: 'absolute', bottom: 14, right: 14, width: 150, height: 110, borderRadius: 8, overflow: 'hidden', border: '2px solid rgba(255,255,255,.25)', zIndex: 8, boxShadow: '0 4px 20px rgba(0,0,0,.6)' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, fontFamily: "'DM Mono',monospace", fontSize: 8, color: 'rgba(255,255,255,.8)', background: 'rgba(0,0,0,.55)', padding: '3px 6px', textAlign: 'center', zIndex: 1, letterSpacing: '.08em' }}>MAP / 現在地</div>
-          {minimapSrc && <img src={minimapSrc} alt="map" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-          {!minimapSrc && <div style={{ width: '100%', height: '100%', background: '#1a1a2e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.3)' }}>読込中...</div>}
+        <div style={{ position: 'absolute', bottom: 14, right: 14, width: 158, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,255,255,.25)', zIndex: 8, boxShadow: '0 4px 20px rgba(0,0,0,.6)', background: '#1a1a2e' }}>
+          {/* 切り替えタブ */}
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,.7)' }}>
+            {[{ key: 'current', label: '現在地' }, { key: 'route', label: 'ルート全体' }].map(({ key, label }) => (
+              <button key={key} onClick={() => setMinimapMode(key)} style={{
+                flex: 1, padding: '4px 0', border: 'none', cursor: 'pointer',
+                background: minimapMode === key ? 'rgba(255,200,80,.25)' : 'transparent',
+                borderBottom: minimapMode === key ? '2px solid #ffc850' : '2px solid transparent',
+                fontFamily: "'DM Mono',monospace", fontSize: 8,
+                color: minimapMode === key ? '#ffc850' : 'rgba(255,255,255,.4)',
+                letterSpacing: '.05em', transition: 'all .15s',
+              }}>{label}</button>
+            ))}
+          </div>
+          {/* マップ画像 */}
+          <div style={{ height: 110, position: 'relative' }}>
+            {minimapMode === 'current'
+              ? minimapSrc
+                ? <img src={minimapSrc} alt="map" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.3)' }}>読込中...</div>
+              : routeMapSrc
+                ? <img src={routeMapSrc} alt="route" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.3)' }}>読込中...</div>
+            }
+          </div>
         </div>
 
         {/* REC badge */}
@@ -376,11 +431,19 @@ function Viewer({ steps, origin, destination, travelMode, onClose }) {
       </div>
 
       {/* Speed */}
-      <div style={{ padding: '4px 16px', background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.35)', letterSpacing: '.1em' }}>SPEED</span>
-        <input type="range" min={1} max={10} value={speed} onChange={e => setSpeed(+e.target.value)}
-          style={{ flex: 1, WebkitAppearance: 'none', height: 2, background: `linear-gradient(to right,rgba(255,255,255,.7) ${(speed-1)/9*100}%,rgba(255,255,255,.15) ${(speed-1)/9*100}%)`, borderRadius: 2, outline: 'none' }} />
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'var(--amber)', minWidth: 28, textAlign: 'right' }}>{speed}×</span>
+      <div style={{ padding: '6px 14px', background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.35)', letterSpacing: '.1em', marginRight: 4 }}>SPEED</span>
+        {SPEED_STEPS.map((s, i) => (
+          <button key={s.label} onClick={() => setSpeed(i)} style={{
+            flex: 1, padding: '6px 0',
+            background: speed === i ? 'rgba(255,200,80,.2)' : 'rgba(255,255,255,.06)',
+            border: `1px solid ${speed === i ? 'rgba(255,200,80,.7)' : 'rgba(255,255,255,.1)'}`,
+            borderRadius: 8,
+            fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: speed === i ? 600 : 400,
+            color: speed === i ? '#ffc850' : 'rgba(255,255,255,.35)',
+            cursor: 'pointer', transition: 'all .15s',
+          }}>{s.label}</button>
+        ))}
       </div>
 
       {/* Controls */}
@@ -424,6 +487,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loaderMsg, setLoaderMsg] = useState({ ja: '', en: '', detail: '' });
   const [steps, setSteps] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
 
   const modes = [
     { id: 'walking', ja: '🚶 徒歩', en: 'Walking' },
@@ -458,6 +522,14 @@ export default function Home() {
 
       let waypoints = [];
       if (dr.status === 'OK' && dr.routes.length) {
+        // 所要時間・距離をrouteInfoとして保存
+        const leg = dr.routes[0].legs[0];
+        setRouteInfo({
+          duration: leg.duration?.text || '',
+          distance: leg.distance?.value >= 1000
+            ? leg.distance?.text || ''
+            : `${leg.distance?.value || ''}m`,
+        });
         for (const leg of dr.routes[0].legs) {
           for (const step of leg.steps) {
             const instr = stripHtml(step.html_instructions);
@@ -483,7 +555,7 @@ export default function Home() {
     setLoading(false);
   }
 
-  if (steps) return <Viewer steps={steps} origin={origin} destination={destination} travelMode={modes.find(m2 => m2.id === mode)?.ja || mode} onClose={() => setSteps(null)} />;
+  if (steps) return <Viewer steps={steps} origin={origin} destination={destination} travelMode={modes.find(m2 => m2.id === mode)?.ja || mode} routeInfo={routeInfo} onClose={() => setSteps(null)} />;
 
   return (
     <>
@@ -495,37 +567,38 @@ export default function Home() {
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
           @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-          input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#1a1410; cursor:pointer; }
+          input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#ffc850; cursor:pointer; }
           input[type=range] { -webkit-appearance:none; cursor:pointer; }
           * { -webkit-tap-highlight-color: transparent; }
-          body { overflow-y: auto; overflow-x: hidden; }
+          body { overflow-y: auto; overflow-x: hidden; background: #0e0e0e; }
+          ::placeholder { color: rgba(255,255,255,.25) !important; }
         `}</style>
       </Head>
 
       {loading && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 200 }}>
-          <div style={{ width: 42, height: 42, border: '2px solid var(--rule)', borderTopColor: 'var(--ink)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <div style={{ fontSize: 14, color: 'var(--ink)' }}>{loaderMsg.ja}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '.08em' }}>{loaderMsg.detail}</div>
+        <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 200 }}>
+          <div style={{ width: 42, height: 42, border: '2px solid rgba(255,255,255,.15)', borderTopColor: 'rgba(255,255,255,.8)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', fontFamily: "'DM Mono',monospace", letterSpacing: '.06em' }}>{loaderMsg.ja}</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.35)', letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.25)', letterSpacing: '.08em' }}>{loaderMsg.detail}</div>
         </div>
       )}
 
-      <div style={{ background: 'var(--bg)', minHeight: '100vh', paddingBottom: 32 }}>
+      <div style={{ background: '#0e0e0e', minHeight: '100vh', paddingBottom: 32 }}>
         {/* Header */}
-        <div style={{ padding: '24px 24px 14px', borderBottom: '1px solid var(--rule)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div style={{ padding: '28px 24px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>Street <span style={{ color: 'var(--amber)' }}>Journey</span></div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '.1em', marginTop: 4 }}>Virtual Travel Timelapse / 擬似旅行タイムラプス</div>
+            <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1, color: '#fff' }}>Street <span style={{ color: '#ffc850' }}>Journey</span></div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.35)', letterSpacing: '.1em', marginTop: 5 }}>行きたい場所へ、すぐ行こう。 / Go anywhere. Right now.</div>
           </div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'var(--muted)', letterSpacing: '.1em', border: '1px solid var(--rule)', padding: '4px 8px', borderRadius: 20 }}>BETA v3</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', border: '1px solid rgba(255,255,255,.12)', padding: '4px 8px', borderRadius: 20 }}>BETA v3</div>
         </div>
 
         {/* Route card */}
         <Card title="Route / ルート">
-          <RouteInput value={origin} onChange={setOrigin} onSelect={setOrigin} placeholder="出発地 / Origin（例: 渋谷駅、Shibuya Station）" dotColor="var(--green)" label="Origin" />
-          <RouteInput value={destination} onChange={setDestination} onSelect={setDestination} placeholder="目的地 / Destination（例: 原宿駅、Harajuku）" dotColor="var(--red)" label="Destination" />
-          <div style={{ padding: '4px 16px 10px', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'var(--muted)', letterSpacing: '.08em' }}>
+          <RouteInput value={origin} onChange={setOrigin} onSelect={setOrigin} placeholder="出発地 / Origin（例: 渋谷駅、Shibuya Station）" dotColor="#4ade80" label="Origin" />
+          <RouteInput value={destination} onChange={setDestination} onSelect={setDestination} placeholder="目的地 / Destination（例: 原宿駅、Harajuku）" dotColor="#f87171" label="Destination" />
+          <div style={{ padding: '4px 16px 10px', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
             日本語・英語・住所・施設名対応 / Supports Japanese, English, addresses & place names
           </div>
         </Card>
@@ -535,10 +608,12 @@ export default function Home() {
           <div style={{ display: 'flex', padding: 10, gap: 6 }}>
             {modes.map(m2 => (
               <button key={m2.id} onClick={() => setMode(m2.id)} style={{
-                flex: 1, padding: '10px 4px', border: `1px solid ${mode === m2.id ? 'var(--ink)' : 'var(--rule)'}`,
-                borderRadius: 8, background: mode === m2.id ? 'var(--ink)' : 'transparent',
-                color: mode === m2.id ? 'var(--bg)' : 'var(--muted)', cursor: 'pointer',
-                fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '.04em',
+                flex: 1, padding: '10px 4px',
+                border: `1px solid ${mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.1)'}`,
+                borderRadius: 8,
+                background: mode === m2.id ? 'rgba(255,200,80,.12)' : 'rgba(255,255,255,.04)',
+                color: mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.35)',
+                cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '.04em',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .15s',
               }}>
                 {m2.ja}
@@ -551,12 +626,12 @@ export default function Home() {
         {/* Start */}
         <button onClick={startJourney} style={{
           margin: '14px 16px 0', width: 'calc(100% - 32px)', padding: 17,
-          background: 'var(--ink)', color: 'var(--bg)', border: 'none', borderRadius: 12,
-          fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 500, letterSpacing: '.14em',
+          background: '#ffc850', color: '#0a0a0a', border: 'none', borderRadius: 12,
+          fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, letterSpacing: '.14em',
           textTransform: 'uppercase', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
         }}>
           ▶ JOURNEY START
-          <span style={{ fontFamily: 'inherit', fontSize: 10, color: 'rgba(255,255,255,.55)', fontWeight: 400, letterSpacing: 0 }}>旅を始める</span>
+          <span style={{ fontFamily: 'inherit', fontSize: 10, color: 'rgba(0,0,0,.5)', fontWeight: 400, letterSpacing: 0 }}>旅を始める</span>
         </button>
       </div>
     </>
@@ -565,8 +640,8 @@ export default function Home() {
 
 function Card({ title, children }) {
   return (
-    <div style={{ margin: '14px 16px 0', background: 'var(--surface)', border: '1px solid var(--rule)', borderRadius: 12, overflow: 'visible' }}>
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--rule)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>{title}</div>
+    <div style={{ margin: '14px 16px 0', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'visible' }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.14em', color: 'rgba(255,255,255,.25)', textTransform: 'uppercase' }}>{title}</div>
       {children}
     </div>
   );
