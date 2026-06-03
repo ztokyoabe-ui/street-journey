@@ -337,7 +337,6 @@ function Viewer({ steps, origin, destination, travelMode, routeInfo, onClose }) 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <Btn onClick={goToStart}>⏮ Start</Btn>
           <Btn onClick={toggleRecord} style={{ color: isRecording ? '#ff6060' : undefined, background: isRecording ? 'rgba(255,60,60,.25)' : undefined }}>
             {isRecording ? '⏹ STOP' : '⏺ REC'}
           </Btn>
