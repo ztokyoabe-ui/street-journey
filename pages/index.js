@@ -1,647 +1,891 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Head from 'next/head';
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Head from 'next/head'
 
-/* ─────────── AUTOCOMPLETE HOOK ─────────── */
-function useAutocomplete(value, enabled) {
-  const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const timer = useRef(null);
-  const session = useRef(Math.random().toString(36).slice(2));
-
-  useEffect(() => {
-    if (!enabled || value.length < 1) { setSuggestions([]); return; }
-    clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const r = await fetch(`/api/places?input=${encodeURIComponent(value)}&sessiontoken=${session.current}`);
-        const d = await r.json();
-        if (d.predictions) setSuggestions(d.predictions.slice(0, 6));
-        else setSuggestions([]);
-      } catch { setSuggestions([]); }
-      setLoading(false);
-    }, 200);
-  }, [value, enabled]);
-
-  return { suggestions, loading, clearSuggestions: () => setSuggestions([]) };
+// ─────────────────────────────────────────────
+// カラーテーマ定数
+// ─────────────────────────────────────────────
+const C = {
+  base: '#f7f9f8',
+  accent: '#2a9d8f',
+  accentDark: '#1f7d72',
+  text: '#1a2420',
+  sub: '#6b8880',
+  card: '#ffffff',
+  border: '#dde8e5',
 }
 
-/* ─────────── ROUTE INPUT COMPONENT ─────────── */
-function RouteInput({ value, onChange, onSelect, placeholder, dotColor, label }) {
-  const [focused, setFocused] = useState(false);
-  const { suggestions, loading, clearSuggestions } = useAutocomplete(value, focused || value.length > 0);
-  const wrapRef = useRef(null);
+// ─────────────────────────────────────────────
+// Travel Mode SVG アイコン（size='sm'|'lg'）
+// ─────────────────────────────────────────────
+function WalkIcon({ size = 'sm', active = false }) {
+  const s = size === 'lg' ? 32 : 20
+  const color = active ? '#ffffff' : C.accent
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="4" r="2" fill={color} />
+      <path d="M10 8.5L8 14l2 1.5-1.5 5.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M14 8.5L16 14l-2 1.5 1.5 5.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M8.5 11h7" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
 
-  const handleSelect = (pred) => {
-    onSelect(pred.description);
-    clearSuggestions();
-    setFocused(false);
-  };
+function BikeIcon({ size = 'sm', active = false }) {
+  const s = size === 'lg' ? 32 : 20
+  const color = active ? '#ffffff' : C.accent
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="5.5" cy="16" r="3" stroke={color} strokeWidth="1.8" />
+      <circle cx="18.5" cy="16" r="3" stroke={color} strokeWidth="1.8" />
+      <path d="M5.5 16L10 9h4l2 7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 9l4.5 7" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="14" cy="5.5" r="1.5" fill={color} />
+      <path d="M12 7l2-1.5" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function DriveIcon({ size = 'sm', active = false }) {
+  const s = size === 'lg' ? 32 : 20
+  const color = active ? '#ffffff' : C.accent
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 11l2.5-5h9L19 11" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3" y="11" width="18" height="7" rx="2" stroke={color} strokeWidth="1.8" />
+      <circle cx="7" cy="18" r="2" fill={color} />
+      <circle cx="17" cy="18" r="2" fill={color} />
+      <path d="M3 14h18" stroke={color} strokeWidth="1.2" />
+    </svg>
+  )
+}
+
+// ─────────────────────────────────────────────
+// L字フローティングアイコン（rAF制御 6462ms/周）
+// ─────────────────────────────────────────────
+const ANIM_DURATION = 6462
+
+// フェーズ定義
+// Phase A: x=490→300, y=260 (水平左移動)
+// Phase B: x=300, y=260→108 (垂直上昇)
+// Phase C: x=300→-60, y=108 (水平左移動して消える)
+const phaseA = { xStart: 490, xEnd: 300, y: 260, dur: 0.35 }
+const phaseB = { x: 300, yStart: 260, yEnd: 108, dur: 0.25 }
+const phaseC = { xStart: 300, xEnd: -60, y: 108, dur: 0.40 }
+
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+}
+
+function FloatingIcon() {
+  const posRef = useRef({ x: phaseA.xStart, y: phaseA.y, opacity: 1 })
+  const elRef = useRef(null)
+  const rafRef = useRef(null)
+  const startRef = useRef(null)
+
+  const tick = useCallback((ts) => {
+    if (!startRef.current) startRef.current = ts
+    const elapsed = (ts - startRef.current) % ANIM_DURATION
+    const t = elapsed / ANIM_DURATION // 0..1
+
+    let x, y, opacity
+    const thA = phaseA.dur
+    const thB = thA + phaseB.dur
+
+    if (t < thA) {
+      // Phase A
+      const p = easeInOut(t / thA)
+      x = phaseA.xStart + (phaseA.xEnd - phaseA.xStart) * p
+      y = phaseA.y
+      opacity = 1
+    } else if (t < thB) {
+      // Phase B
+      const p = easeInOut((t - thA) / phaseB.dur)
+      x = phaseB.x
+      y = phaseB.yStart + (phaseB.yEnd - phaseB.yStart) * p
+      opacity = 1
+    } else {
+      // Phase C
+      const p = easeInOut((t - thB) / phaseC.dur)
+      x = phaseC.xStart + (phaseC.xEnd - phaseC.xStart) * p
+      y = phaseC.y
+      // フェードアウト後半
+      opacity = p > 0.75 ? 1 - (p - 0.75) / 0.25 : 1
+    }
+
+    if (elRef.current) {
+      elRef.current.style.transform = `translate(${x}px, ${y}px)`
+      elRef.current.style.opacity = opacity
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+  }, [])
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [tick])
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.15)' }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: dotColor, flexShrink: 0, boxShadow: `0 0 6px ${dotColor}` }} />
-        <input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => { setFocused(false); clearSuggestions(); }, 180)}
-          placeholder={placeholder}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          style={{
-            flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: 15, color: '#fff', fontFamily: 'inherit', minWidth: 0,
-          }}
+    <div
+      ref={elRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        pointerEvents: 'none',
+        willChange: 'transform, opacity',
+      }}
+    >
+      {/* L字パスの軌跡ガイド（薄く表示） */}
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="6" y="6" width="24" height="24" rx="6" fill={C.accent} opacity="0.12" />
+        <path
+          d="M18 10 L26 10 L26 26 L10 26"
+          stroke={C.accent}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity="0.7"
         />
-        {loading && <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.15)', borderTopColor: 'rgba(255,255,255,.7)', borderRadius: '50%', animation: 'spin .6s linear infinite', flexShrink: 0 }} />}
-        {value && <button onClick={() => { onChange(''); clearSuggestions(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.3)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>}
+        <circle cx="26" cy="18" r="3" fill={C.accent} opacity="0.9" />
+      </svg>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// RouteカードUI（Autocomplete付き入力）
+// ─────────────────────────────────────────────
+function RouteCard({ from, to, onFromChange, onToChange }) {
+  return (
+    <div style={{
+      background: C.card,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 16,
+      padding: '20px 20px 16px',
+      marginBottom: 12,
+    }}>
+      <div style={{
+        fontSize: 10,
+        fontFamily: "'DM Mono', monospace",
+        letterSpacing: '0.12em',
+        color: C.sub,
+        marginBottom: 14,
+        textTransform: 'uppercase',
+      }}>
+        Route / ルート
       </div>
 
-      {suggestions.length > 0 && focused && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: '100%',
-          background: '#1a1a1a', border: '1px solid rgba(255,255,255,.12)', borderTop: 'none',
-          borderRadius: '0 0 12px 12px', zIndex: 300,
-          boxShadow: '0 12px 32px rgba(0,0,0,.6)', overflow: 'hidden',
-          maxHeight: 280, overflowY: 'auto',
-        }}>
-          {suggestions.map((p, i) => (
-            <div
-              key={p.place_id || i}
-              onMouseDown={() => handleSelect(p)}
-              onTouchEnd={e => { e.preventDefault(); handleSelect(p); }}
+      {/* FROM */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 10, color: C.sub, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', display: 'block', marginBottom: 4 }}>
+          FROM
+        </label>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13 }}>📍</span>
+          <input
+            type="text"
+            value={from}
+            onChange={e => onFromChange(e.target.value)}
+            placeholder="出発地 / Start location"
+            style={{
+              width: '100%',
+              padding: '10px 12px 10px 34px',
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 10,
+              fontSize: 13,
+              fontFamily: "'DM Mono', monospace",
+              color: C.text,
+              background: C.base,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 矢印 */}
+      <div style={{ textAlign: 'center', margin: '4px 0', color: C.sub, fontSize: 16 }}>↓</div>
+
+      {/* TO */}
+      <div>
+        <label style={{ fontSize: 10, color: C.sub, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', display: 'block', marginBottom: 4 }}>
+          TO
+        </label>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13 }}>🏁</span>
+          <input
+            type="text"
+            value={to}
+            onChange={e => onToChange(e.target.value)}
+            placeholder="目的地 / Destination"
+            style={{
+              width: '100%',
+              padding: '10px 12px 10px 34px',
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 10,
+              fontSize: 13,
+              fontFamily: "'DM Mono', monospace",
+              color: C.text,
+              background: C.base,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 10, color: C.sub, fontFamily: "'DM Mono', monospace" }}>
+        日本語・英語・住所・施設名対応
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Travel Mode カード
+// ─────────────────────────────────────────────
+const MODES = [
+  { key: 'walk', label: 'Walk', labelJa: '徒歩', Icon: WalkIcon },
+  { key: 'bike', label: 'Bike', labelJa: '自転車', Icon: BikeIcon },
+  { key: 'drive', label: 'Drive', labelJa: '車', Icon: DriveIcon },
+]
+
+function TravelModeCard({ mode, onModeChange }) {
+  return (
+    <div style={{
+      background: C.card,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 16,
+      padding: '20px 20px 16px',
+      marginBottom: 20,
+    }}>
+      <div style={{
+        fontSize: 10,
+        fontFamily: "'DM Mono', monospace",
+        letterSpacing: '0.12em',
+        color: C.sub,
+        marginBottom: 14,
+        textTransform: 'uppercase',
+      }}>
+        Travel Mode / 移動手段
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        {MODES.map(({ key, label, labelJa, Icon }) => {
+          const active = mode === key
+          return (
+            <button
+              key={key}
+              onClick={() => onModeChange(key)}
               style={{
-                padding: '12px 16px', cursor: 'pointer',
-                borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,.06)' : 'none',
-                display: 'flex', alignItems: 'center', gap: 12,
-                background: 'transparent', transition: 'background .1s',
+                flex: 1,
+                padding: '14px 8px',
+                border: `1.5px solid ${active ? C.accent : C.border}`,
+                borderRadius: 12,
+                background: active ? C.accent : C.base,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 0.2s ease',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.06)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div style={{ fontSize: 16, flexShrink: 0, color: 'rgba(255,255,255,.3)' }}>📍</div>
+              <Icon size="lg" active={active} />
               <div>
-                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>
-                  {p.structured_formatting?.main_text || p.description}
+                <div style={{
+                  fontSize: 11,
+                  fontFamily: "'DM Mono', monospace",
+                  fontWeight: 600,
+                  color: active ? '#ffffff' : C.text,
+                  letterSpacing: '0.05em',
+                }}>
+                  {label}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', marginTop: 2, fontFamily: "'DM Mono', monospace", letterSpacing: '0.04em' }}>
-                  {p.structured_formatting?.secondary_text || ''}
+                <div style={{
+                  fontSize: 9,
+                  color: active ? 'rgba(255,255,255,0.8)' : C.sub,
+                  marginTop: 2,
+                }}>
+                  {labelJa}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </button>
+          )
+        })}
+      </div>
     </div>
-  );
+  )
 }
 
-/* ─────────── VIEWER ─────────── */
-function Viewer({ steps, origin, destination, travelMode, routeInfo, onClose }) {
-  const [cur, setCur] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(2); // index: 0=1× 1=2× 2=3× 3=5× 4=10×
-  const [filmVisible, setFilmVisible] = useState(false);
-  const [activeImg, setActiveImg] = useState('A');
-  const [isRecording, setIsRecording] = useState(false);
-  const [minimapSrc, setMinimapSrc] = useState('');
-  const [minimapMode, setMinimapMode] = useState('current'); // 'current' | 'route'
-  const [routeMapSrc, setRouteMapSrc] = useState('');
-  const speedRef = useRef(2);
+// ─────────────────────────────────────────────
+// Top Screen
+// ─────────────────────────────────────────────
+function TopScreen({ onStart }) {
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [mode, setMode] = useState('walk')
 
-  const imgARef = useRef(null);
-  const imgBRef = useRef(null);
-  const timerRef = useRef(null);
-  const mediaRecRef = useRef(null);
-  const recChunksRef = useRef([]);
-  const filmHideRef = useRef(null);
-  const minimapTimerRef = useRef(null);
-  const curRef = useRef(cur);
-  const playingRef = useRef(playing);
-  const activeImgRef = useRef(activeImg);
-
-  const SPEED_STEPS = [
-    { label: '1×', interval: 2000 },
-    { label: '2×', interval: 1000 },
-    { label: '3×', interval: 650 },
-    { label: '5×', interval: 380 },
-    { label: '10×', interval: 180 },
-  ];
-  const interval = SPEED_STEPS[speed]?.interval ?? 650;
-
-  useEffect(() => { curRef.current = cur; }, [cur]);
-  useEffect(() => { playingRef.current = playing; }, [playing]);
-  useEffect(() => { activeImgRef.current = activeImg; }, [activeImg]);
-  useEffect(() => { speedRef.current = speed; }, [speed]);
-
-  // SV URL
-  const svUrl = useCallback((step, idx) => {
-    let heading = '';
-    if (idx > 0) {
-      const prev = steps[idx - 1];
-      const dLat = step.lat - prev.lat, dLng = step.lng - prev.lng;
-      heading = `&heading=${Math.round(Math.atan2(dLng, dLat) * 180 / Math.PI)}`;
-    }
-    return `/api/sv-proxy?lat=${step.lat}&lng=${step.lng}${heading ? `&heading=${heading.slice(9)}` : ''}&w=800&h=500`;
-  }, [steps]);
-
-  // Static map URL (via API proxy to avoid CORS)
-  const staticMapUrl = useCallback((step) => {
-    const pathPts = steps.filter((_, i) => i % 4 === 0 || i === steps.length - 1)
-      .map(p => `${p.lat},${p.lng}`).join('|');
-    return `/api/static-map?lat=${step.lat}&lng=${step.lng}&path=${encodeURIComponent(pathPts)}`;
-  }, [steps]);
-
-  // Direct SV URL (using api key from server)
-  const directSvUrl = useCallback((step, idx, w = 800, h = 500) => {
-    let heading = '';
-    if (idx > 0) {
-      const prev = steps[idx - 1];
-      const dLat = step.lat - prev.lat, dLng = step.lng - prev.lng;
-      heading = Math.round(Math.atan2(dLng, dLat) * 180 / Math.PI);
-    }
-    const params = new URLSearchParams({ lat: step.lat, lng: step.lng, w, h });
-    if (heading) params.set('heading', heading);
-    return `/api/sv?${params}`;
-  }, [steps]);
-
-  const staticMapUrlDirect = useCallback((step) => {
-    const pathPts = steps.filter((_, i) => i % 4 === 0 || i === steps.length - 1)
-      .map(p => `${p.lat},${p.lng}`).join('|');
-    return `/api/staticmap?lat=${step.lat}&lng=${step.lng}&path=${encodeURIComponent(pathPts)}`;
-  }, [steps]);
-
-  // ルート全体マップ（start〜end中点を中心に広いズーム）
-  const routeOverviewUrl = useCallback((step) => {
-    const first = steps[0], last = steps[steps.length - 1];
-    const midLat = (first.lat + last.lat) / 2;
-    const midLng = (first.lng + last.lng) / 2;
-    const pathPts = steps.filter((_, i) => i % 3 === 0 || i === steps.length - 1)
-      .map(p => `${p.lat},${p.lng}`).join('|');
-    // 現在地マーカーとして current step を渡す
-    return `/api/staticmap?lat=${midLat}&lng=${midLng}&path=${encodeURIComponent(pathPts)}&marker=${step.lat},${step.lng}&zoom=13`;
-  }, [steps]);
-
-  // Crossfade
-  const crossfade = useCallback((url) => {
-    const imgA = imgARef.current, imgB = imgBRef.current;
-    if (!imgA || !imgB) return;
-    const next = activeImgRef.current === 'A' ? imgB : imgA;
-    const prev = activeImgRef.current === 'A' ? imgA : imgB;
-    next.src = url;
-    next.onload = () => {
-      next.style.opacity = '1'; prev.style.opacity = '0';
-      setActiveImg(a => a === 'A' ? 'B' : 'A');
-    };
-    next.onerror = () => {};
-  }, []);
-
-  // Render step
-  const renderStep = useCallback((c, instant = false) => {
-    const step = steps[c];
-    if (!step) return;
-    const url = directSvUrl(step, c);
-    if (instant) {
-      const imgA = imgARef.current;
-      if (imgA) { imgA.src = url; imgA.style.opacity = '1'; }
-      const imgB = imgBRef.current;
-      if (imgB) imgB.style.opacity = '0';
-      setActiveImg('A');
-    } else {
-      crossfade(url);
-    }
-    // ミニマップ更新：高速時(3×以上)はdebounceなしで即時更新
-    const currentSpeed = speedRef.current;
-    const currentInterval = SPEED_STEPS[currentSpeed]?.interval ?? 650;
-    const isHighSpeed = currentSpeed >= 3; // 5×・10×
-    const updateMinimap = () => {
-      setMinimapSrc(staticMapUrlDirect(step));
-      setRouteMapSrc(routeOverviewUrl(step));
-    };
-    clearTimeout(minimapTimerRef.current);
-    if (isHighSpeed) {
-      updateMinimap();
-    } else {
-      minimapTimerRef.current = setTimeout(updateMinimap, Math.min(currentInterval, 500));
-    }
-  }, [steps, directSvUrl, crossfade, staticMapUrlDirect, routeOverviewUrl]);
-
-  // Init
-  useEffect(() => {
-    renderStep(0, true);
-    setTimeout(() => setPlaying(true), 600);
-  }, []);
-
-  // Playback
-  useEffect(() => {
-    if (playing) {
-      timerRef.current = setInterval(() => {
-        setCur(c => {
-          const next = c + 1;
-          if (next >= steps.length) { setPlaying(false); return c; }
-          renderStep(next, false);
-          return next;
-        });
-      }, interval);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [playing, interval, steps, renderStep]);
-
-  const goTo = useCallback((c, instant = false) => {
-    setPlaying(false);
-    clearInterval(timerRef.current);
-    setCur(c);
-    renderStep(c, instant);
-  }, [renderStep]);
-
-  const togglePlay = () => setPlaying(p => !p);
-  const goToStart = () => goTo(0, true);
-  const prevStep = () => goTo(Math.max(0, cur - 1));
-  const nextStep = () => goTo(Math.min(steps.length - 1, cur + 1));
-  const skipFwd = () => goTo(Math.min(steps.length - 1, cur + 8));
-
-  const pct = ((cur + 1) / steps.length) * 100;
-  const step = steps[cur] || {};
-
-  // Filmstrip toggle
-  const toggleFilmstrip = () => {
-    setFilmVisible(v => !v);
-    clearTimeout(filmHideRef.current);
-    if (!filmVisible) filmHideRef.current = setTimeout(() => setFilmVisible(false), 5000);
-  };
-
-  // Recording
-  const toggleRecord = async () => {
-    if (isRecording) {
-      if (mediaRecRef.current?.state !== 'inactive') mediaRecRef.current.stop();
-      setIsRecording(false);
-      return;
-    }
-    if (!window.MediaRecorder) return alert('このブラウザは録画に非対応です');
-    const wrap = document.getElementById('sv-wrap');
-    const canvas = document.createElement('canvas');
-    canvas.width = wrap.offsetWidth * (window.devicePixelRatio || 1);
-    canvas.height = wrap.offsetHeight * (window.devicePixelRatio || 1);
-    const ctx = canvas.getContext('2d');
-    const stream = canvas.captureStream(10);
-    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-    const mr = new MediaRecorder(stream, { mimeType: mime });
-    recChunksRef.current = [];
-    mr.ondataavailable = e => { if (e.data.size > 0) recChunksRef.current.push(e.data); };
-    mr.onstop = () => {
-      const blob = new Blob(recChunksRef.current, { type: 'video/webm' });
-      if (blob.size === 0) return alert('録画データが空です');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'street-journey.webm'; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    };
-    mr.start(200);
-    mediaRecRef.current = mr;
-    setIsRecording(true);
-    const drawLoop = () => {
-      if (mediaRecRef.current?.state === 'inactive') return;
-      const el = activeImgRef.current === 'A' ? imgARef.current : imgBRef.current;
-      try {
-        if (el?.complete && el.naturalWidth > 0) {
-          ctx.drawImage(el, 0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = 'rgba(0,0,0,.5)';
-          ctx.fillRect(0, canvas.height - 56, canvas.width, 56);
-          ctx.fillStyle = '#fff'; ctx.font = `bold ${canvas.width * .018}px sans-serif`;
-          ctx.fillText(step.instruction || '', 14 * (window.devicePixelRatio || 1), canvas.height - 30 * (window.devicePixelRatio || 1));
-        }
-      } catch {}
-      requestAnimationFrame(drawLoop);
-    };
-    drawLoop();
-    if (!playing) setPlaying(true);
-  };
+  const canStart = from.trim() && to.trim()
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', background: 'rgba(0,0,0,.82)', backdropFilter: 'blur(10px)', gap: 10, flexShrink: 0 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'rgba(255,255,255,.9)', letterSpacing: '.07em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {origin} → {destination}
-          </div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.4)', letterSpacing: '.06em', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span>{steps.length} waypoints · {travelMode}</span>
-            {routeInfo?.duration && <span style={{ color: 'rgba(255,200,80,.85)' }}>🕐 {routeInfo.duration}</span>}
-            {routeInfo?.distance && <span style={{ color: 'rgba(255,200,80,.85)' }}>📍 {routeInfo.distance}</span>}
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      background: C.base,
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '0 0 40px',
+    }}>
+      {/* ヘッダー */}
+      <header style={{
+        padding: '20px 24px 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 12,
+          letterSpacing: '0.2em',
+          color: C.accent,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+        }}>
+          Street Journey
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <Btn onClick={toggleRecord} style={{ color: isRecording ? '#ff6060' : undefined, background: isRecording ? 'rgba(255,60,60,.25)' : undefined }}>
-            {isRecording ? '⏹ STOP' : '⏺ REC'}
-          </Btn>
-          <Btn onClick={onClose} style={{ padding: '7px 14px', fontSize: 10, letterSpacing: '.06em' }}>← 検索に戻る</Btn>
+        <div style={{
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 9,
+          color: C.sub,
+          background: `${C.accent}18`,
+          padding: '3px 8px',
+          borderRadius: 20,
+          border: `1px solid ${C.accent}30`,
+          letterSpacing: '0.1em',
+        }}>
+          BETA v3
         </div>
-      </div>
+      </header>
 
-      {/* SV */}
-      <div id="sv-wrap" style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#111' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, height: 2, width: pct + '%', background: 'rgba(255,255,255,.9)', transition: 'width .35s ease', zIndex: 10 }} />
-        <img ref={imgARef} src="" alt="" crossOrigin="anonymous"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, transition: 'opacity .45s' }} />
-        <img ref={imgBRef} src="" alt="" crossOrigin="anonymous"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2, opacity: 0, transition: 'opacity .45s' }} />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, background: 'linear-gradient(transparent,rgba(0,0,0,.85))', pointerEvents: 'none', zIndex: 3 }} />
-
-        {/* Minimap */}
-        <div style={{ position: 'absolute', bottom: 14, right: 14, width: 158, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,255,255,.25)', zIndex: 8, boxShadow: '0 4px 20px rgba(0,0,0,.6)', background: '#1a1a2e' }}>
-          {/* 切り替えタブ */}
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,.7)' }}>
-            {[{ key: 'current', label: '現在地' }, { key: 'route', label: 'ルート全体' }].map(({ key, label }) => (
-              <button key={key} onClick={() => setMinimapMode(key)} style={{
-                flex: 1, padding: '4px 0', border: 'none', cursor: 'pointer',
-                background: minimapMode === key ? 'rgba(255,200,80,.25)' : 'transparent',
-                borderBottom: minimapMode === key ? '2px solid #ffc850' : '2px solid transparent',
-                fontFamily: "'DM Mono',monospace", fontSize: 8,
-                color: minimapMode === key ? '#ffc850' : 'rgba(255,255,255,.4)',
-                letterSpacing: '.05em', transition: 'all .15s',
-              }}>{label}</button>
-            ))}
-          </div>
-          {/* マップ画像 */}
-          <div style={{ height: 110, position: 'relative' }}>
-            {minimapMode === 'current'
-              ? minimapSrc
-                ? <img src={minimapSrc} alt="map" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.3)' }}>読込中...</div>
-              : routeMapSrc
-                ? <img src={routeMapSrc} alt="route" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.3)' }}>読込中...</div>
-            }
-          </div>
-        </div>
-
-        {/* REC badge */}
-        {isRecording && (
-          <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,.65)', padding: '5px 10px', borderRadius: 20, zIndex: 20 }}>
-            <div style={{ width: 8, height: 8, background: '#ff4444', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#fff', letterSpacing: '.08em' }}>REC</span>
-          </div>
-        )}
-
-        {/* Step info */}
-        <div style={{ position: 'absolute', bottom: 14, left: 14, right: 178, zIndex: 5 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', lineHeight: 1.3, textShadow: '0 1px 10px rgba(0,0,0,.9)' }}>{step.instruction || '移動中'}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.5)', marginTop: 3, letterSpacing: '.06em' }}>{step.instructionEn || 'En route'}</div>
-          {step.distance && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>{step.distance}</div>}
-        </div>
-
-        <div style={{ position: 'absolute', top: 14, right: 14, fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'rgba(255,255,255,.55)', zIndex: 5, background: 'rgba(0,0,0,.45)', padding: '4px 8px', borderRadius: 20 }}>
-          {cur + 1} / {steps.length}
-        </div>
-      </div>
-
-      {/* Filmstrip toggle */}
-      <div onClick={toggleFilmstrip} style={{ height: 8, background: 'rgba(255,255,255,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s' }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.14)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,.06)'}>
-        <div style={{ width: 32, height: 2, background: 'rgba(255,255,255,.3)', borderRadius: 2 }} />
-      </div>
-
-      {/* Filmstrip */}
-      {filmVisible && (
-        <div style={{ height: 68, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', padding: '0 8px', gap: 4, overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
-          {steps.map((s, i) => (
-            <img key={i}
-              src={`/api/sv?lat=${s.lat}&lng=${s.lng}&w=112&h=112`}
-              alt="" loading="lazy"
-              onClick={() => goTo(i)}
-              style={{ width: 52, height: 52, borderRadius: 4, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: i === cur ? '2px solid #fff' : '2px solid transparent', opacity: i === cur ? 1 : 0.45, transition: 'border-color .15s, opacity .15s', scrollSnapAlign: 'center' }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Scrubber */}
-      <div style={{ padding: '8px 16px 4px', background: 'rgba(0,0,0,.9)', flexShrink: 0 }}>
-        <input type="range" min={0} max={steps.length - 1} value={cur}
-          onChange={e => goTo(parseInt(e.target.value))}
-          style={{ width: '100%', WebkitAppearance: 'none', height: 2, background: `linear-gradient(to right,#fff ${pct}%,rgba(255,255,255,.15) ${pct}%)`, borderRadius: 2, outline: 'none', cursor: 'pointer' }} />
-      </div>
-
-      {/* Speed */}
-      <div style={{ padding: '6px 14px', background: 'rgba(0,0,0,.9)', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.6)', letterSpacing: '.1em', marginRight: 4 }}>SPEED</span>
-        {SPEED_STEPS.map((s, i) => (
-          <button key={s.label} onClick={() => setSpeed(i)} style={{
-            flex: 1, padding: '6px 0',
-            background: speed === i ? 'rgba(255,200,80,.2)' : 'rgba(255,255,255,.06)',
-            border: `1px solid ${speed === i ? 'rgba(255,200,80,.7)' : 'rgba(255,255,255,.22)'}`,
-            borderRadius: 8,
-            fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: speed === i ? 600 : 400,
-            color: speed === i ? '#ffc850' : 'rgba(255,255,255,.6)',
-            cursor: 'pointer', transition: 'all .15s',
-          }}>{s.label}</button>
-        ))}
-      </div>
-
-      {/* Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 'env(safe-area-inset-bottom,0px)', background: 'rgba(0,0,0,.9)', flexShrink: 0 }}>
-        {[
-          { icon: '⏮', label: 'START/始点', action: goToStart },
-          { icon: '◀', label: 'PREV/前', action: prevStep },
-          { icon: playing ? '⏸' : '▶', label: '', action: togglePlay, big: true },
-          { icon: '▶', label: 'NEXT/次', action: nextStep },
-          { icon: '⏭', label: 'SKIP/スキップ', action: skipFwd },
-        ].map((c, i) => (
-          <button key={i} onClick={c.action} style={{
-            flex: 1, background: 'none', border: 'none', color: c.big ? '#fff' : 'rgba(255,255,255,.45)',
-            padding: '13px 8px', fontSize: c.big ? 24 : 18, cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+      {/* ヒーローセクション */}
+      <div style={{
+        padding: '32px 24px 28px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* ヒーローコピー左 */}
+        <div style={{ flex: 1, paddingRight: 16 }}>
+          <h1 style={{
+            fontFamily: "'Shippori Mincho', serif",
+            fontSize: 26,
+            lineHeight: 1.45,
+            color: C.text,
+            margin: 0,
+            marginBottom: 10,
+            fontWeight: 600,
           }}>
-            {c.icon}
-            {c.label && <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 7, letterSpacing: '.06em', color: 'rgba(255,255,255,.25)' }}>{c.label}</span>}
+            行きたい場所へ、<br />すぐ行こう。
+          </h1>
+          <p style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 10,
+            color: C.sub,
+            letterSpacing: '0.05em',
+            lineHeight: 1.6,
+            margin: 0,
+          }}>
+            Go anywhere.<br />Right now.
+          </p>
+        </div>
+
+        {/* 右側: フローティングL字アイコンアニメーション */}
+        <div style={{
+          width: 120,
+          height: 100,
+          position: 'relative',
+          flexShrink: 0,
+          overflow: 'visible',
+        }}>
+          {/* L字パスの静的ガイドライン */}
+          <svg
+            width="120"
+            height="100"
+            viewBox="0 0 120 100"
+            fill="none"
+            style={{ position: 'absolute', top: 0, left: 0 }}
+          >
+            {/* 水平線A（右→中） */}
+            <line x1="110" y1="72" x2="60" y2="72" stroke={C.accent} strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="4 3" />
+            {/* 垂直線B（下→上） */}
+            <line x1="60" y1="72" x2="60" y2="18" stroke={C.accent} strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="4 3" />
+            {/* 水平線C（中→左消え） */}
+            <line x1="60" y1="18" x2="0" y2="18" stroke={C.accent} strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="4 3" />
+            {/* 折れ点マーク */}
+            <circle cx="60" cy="72" r="3" fill={C.accent} fillOpacity="0.3" />
+            <circle cx="60" cy="18" r="3" fill={C.accent} fillOpacity="0.3" />
+          </svg>
+
+          {/* アニメーションアイコン（座標はコンテナ相対に換算） */}
+          <FloatingIconLocal />
+        </div>
+      </div>
+
+      {/* コンテンツ */}
+      <div style={{ padding: '0 20px', flex: 1 }}>
+        <RouteCard
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+        />
+        <TravelModeCard mode={mode} onModeChange={setMode} />
+
+        {/* STARTボタン */}
+        <button
+          onClick={() => canStart && onStart({ from, to, mode })}
+          disabled={!canStart}
+          style={{
+            width: '100%',
+            padding: '18px',
+            background: canStart ? C.accent : C.border,
+            color: canStart ? '#ffffff' : C.sub,
+            border: 'none',
+            borderRadius: 14,
+            fontSize: 14,
+            fontFamily: "'DM Mono', monospace",
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            cursor: canStart ? 'pointer' : 'not-allowed',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <span>▶</span>
+          <span>JOURNEY START</span>
+        </button>
+        <div style={{
+          textAlign: 'center',
+          marginTop: 8,
+          fontSize: 9,
+          color: C.sub,
+          fontFamily: "'DM Mono', monospace",
+        }}>
+          旅を始める
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// コンテナ相対座標に換算したフローティングアイコン（120×100px内）
+// 元の仕様座標: x=490→300, y=260 → コンテナ比率で換算
+function FloatingIconLocal() {
+  const elRef = useRef(null)
+  const rafRef = useRef(null)
+  const startRef = useRef(null)
+
+  // コンテナ(120×100)に合わせたフェーズ定義
+  // 全体の仕様座標(550wide×280tall)を120×100に縮小
+  const scaleX = 120 / 550
+  const scaleY = 100 / 280
+
+  const lA = {
+    xStart: 490 * scaleX, xEnd: 300 * scaleX,
+    y: 260 * scaleY, dur: 0.35,
+  }
+  const lB = {
+    x: 300 * scaleX, yStart: 260 * scaleY, yEnd: 108 * scaleY,
+    dur: 0.25,
+  }
+  const lC = {
+    xStart: 300 * scaleX, xEnd: -20,
+    y: 108 * scaleY, dur: 0.40,
+  }
+
+  const tick = useCallback((ts) => {
+    if (!startRef.current) startRef.current = ts
+    const elapsed = (ts - startRef.current) % ANIM_DURATION
+    const t = elapsed / ANIM_DURATION
+    const thA = lA.dur
+    const thB = thA + lB.dur
+
+    let x, y, opacity
+    if (t < thA) {
+      const p = easeInOut(t / thA)
+      x = lA.xStart + (lA.xEnd - lA.xStart) * p
+      y = lA.y
+      opacity = 1
+    } else if (t < thB) {
+      const p = easeInOut((t - thA) / lB.dur)
+      x = lB.x
+      y = lB.yStart + (lB.yEnd - lB.yStart) * p
+      opacity = 1
+    } else {
+      const p = easeInOut((t - thB) / lC.dur)
+      x = lC.xStart + (lC.xEnd - lC.xStart) * p
+      y = lC.y
+      opacity = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1
+    }
+
+    if (elRef.current) {
+      elRef.current.style.transform = `translate(${x - 12}px, ${y - 12}px)`
+      elRef.current.style.opacity = opacity
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }, [lA.dur, lA.xStart, lA.xEnd, lA.y, lB.dur, lB.x, lB.yStart, lB.yEnd, lC.dur, lC.xStart, lC.xEnd, lC.y])
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [tick])
+
+  return (
+    <div ref={elRef} style={{
+      position: 'absolute',
+      top: 0, left: 0,
+      pointerEvents: 'none',
+      willChange: 'transform, opacity',
+    }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill={C.accent} opacity="0.15" />
+        <path d="M12 6 L18 6 L18 18 L6 18" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="18" cy="12" r="2.5" fill={C.accent} />
+      </svg>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// Viewer Screen（Street View表示画面）
+// ─────────────────────────────────────────────
+function ViewerScreen({ journey, onBack }) {
+  // 昼夜判定：6〜18時が昼
+  const getIsDay = () => {
+    const h = new Date().getHours()
+    return h >= 6 && h < 18
+  }
+
+  const [isDay, setIsDay] = useState(getIsDay)
+  const [manualOverride, setManualOverride] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
+
+  const toggleDayNight = () => {
+    setTransitioning(true)
+    setTimeout(() => {
+      setIsDay(v => !v)
+      setManualOverride(true)
+      setTransitioning(false)
+    }, 300)
+  }
+
+  // 自動判定（手動上書きなし時のみ）
+  useEffect(() => {
+    if (manualOverride) return
+    const id = setInterval(() => {
+      setIsDay(getIsDay())
+    }, 60000)
+    return () => clearInterval(id)
+  }, [manualOverride])
+
+  const nightBg = '#0a0e12'
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: isDay ? C.base : nightBg,
+      transition: 'background 0.6s ease',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* 夜: 星・月 */}
+      {!isDay && <NightSky />}
+
+      {/* ヘッダー */}
+      <header style={{
+        padding: '20px 20px 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'relative',
+        zIndex: 10,
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: 'none',
+            border: `1.5px solid ${isDay ? C.border : '#2a3a4a'}`,
+            borderRadius: 10,
+            padding: '8px 14px',
+            color: isDay ? C.text : '#8aa8c0',
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 11,
+            cursor: 'pointer',
+            letterSpacing: '0.08em',
+          }}
+        >
+          ← Back
+        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 10,
+            color: isDay ? C.sub : '#4a6a8a',
+            letterSpacing: '0.15em',
+          }}>
+            JOURNEY
+          </div>
+          <div style={{
+            fontFamily: "'Shippori Mincho', serif",
+            fontSize: 13,
+            color: isDay ? C.text : '#c0d8f0',
+            marginTop: 2,
+          }}>
+            {journey.from} → {journey.to}
+          </div>
+        </div>
+
+        {/* 昼夜トグル */}
+        <button
+          onClick={toggleDayNight}
+          style={{
+            background: isDay ? '#fff8e0' : '#1a2a3a',
+            border: `1.5px solid ${isDay ? '#e8d870' : '#2a4a6a'}`,
+            borderRadius: 10,
+            padding: '8px 12px',
+            fontSize: 16,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+        >
+          {isDay ? '☀️' : '🌙'}
+        </button>
+      </header>
+
+      {/* Street Viewエリア（プレースホルダー） */}
+      <div style={{
+        margin: '20px',
+        height: 240,
+        background: isDay
+          ? 'linear-gradient(180deg, #b8d4c8 0%, #8cb8a8 40%, #6a9e90 100%)'
+          : 'linear-gradient(180deg, #0d1a26 0%, #1a2a3a 50%, #243040 100%)',
+        borderRadius: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: `1.5px solid ${isDay ? C.border : '#1a2a3a'}`,
+        transition: 'all 0.6s ease',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          textAlign: 'center',
+          color: isDay ? 'rgba(255,255,255,0.7)' : 'rgba(180,210,240,0.5)',
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 11,
+          letterSpacing: '0.1em',
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>
+            {isDay ? '🏙️' : '🌃'}
+          </div>
+          Street View
+          <div style={{ fontSize: 9, marginTop: 4, opacity: 0.6 }}>
+            Google Maps API required
+          </div>
+        </div>
+
+        {/* 道路線 */}
+        <svg
+          style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 60 }}
+          viewBox="0 0 400 60" preserveAspectRatio="none"
+        >
+          <path
+            d="M0 60 L120 20 L280 20 L400 60"
+            fill={isDay ? 'rgba(100,80,60,0.3)' : 'rgba(20,30,40,0.6)'}
+          />
+          <line x1="200" y1="20" x2="200" y2="60" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeDasharray="8 6" />
+        </svg>
+      </div>
+
+      {/* 旅情報カード */}
+      <div style={{
+        margin: '0 20px',
+        padding: '16px 18px',
+        background: isDay ? C.card : '#111e2a',
+        border: `1.5px solid ${isDay ? C.border : '#1e2e3e'}`,
+        borderRadius: 14,
+        transition: 'all 0.6s ease',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{
+              fontSize: 9,
+              fontFamily: "'DM Mono', monospace",
+              color: isDay ? C.sub : '#4a6a8a',
+              letterSpacing: '0.1em',
+              marginBottom: 4,
+            }}>
+              TRAVEL MODE
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {journey.mode === 'walk' && <WalkIcon active={false} />}
+              {journey.mode === 'bike' && <BikeIcon active={false} />}
+              {journey.mode === 'drive' && <DriveIcon active={false} />}
+              <span style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 12,
+                color: isDay ? C.text : '#8ab0d0',
+                textTransform: 'capitalize',
+              }}>
+                {journey.mode}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              fontSize: 9,
+              fontFamily: "'DM Mono', monospace",
+              color: isDay ? C.sub : '#4a6a8a',
+              letterSpacing: '0.1em',
+              marginBottom: 4,
+            }}>
+              TIME
+            </div>
+            <div style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 14,
+              color: isDay ? C.accent : '#60a0c0',
+            }}>
+              {isDay ? '☀️' : '🌙'} {isDay ? 'Day' : 'Night'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* コントロールバー */}
+      <div style={{
+        margin: '12px 20px 0',
+        display: 'flex',
+        gap: 10,
+      }}>
+        {['⏮', '⏪', '▶', '⏩', '⏭'].map((icon, i) => (
+          <button
+            key={i}
+            style={{
+              flex: 1,
+              padding: '12px 4px',
+              background: isDay ? C.card : '#111e2a',
+              border: `1.5px solid ${isDay ? C.border : '#1e2e3e'}`,
+              borderRadius: 10,
+              fontSize: 14,
+              cursor: 'pointer',
+              color: isDay ? C.text : '#8ab0d0',
+              transition: 'all 0.3s ease',
+            }}
+          >
+            {icon}
           </button>
         ))}
       </div>
     </div>
-  );
+  )
 }
 
-function Btn({ children, onClick, style = {} }) {
+// ─────────────────────────────────────────────
+// 夜空（星・月）コンポーネント
+// ─────────────────────────────────────────────
+function NightSky() {
+  const stars = useRef(
+    Array.from({ length: 40 }, (_, i) => ({
+      x: Math.random() * 100,
+      y: Math.random() * 60,
+      r: Math.random() * 1.5 + 0.5,
+      delay: Math.random() * 3,
+    }))
+  ).current
+
   return (
-    <button onClick={onClick} style={{
-      background: 'rgba(255,255,255,.12)', border: 'none', borderRadius: 16,
-      padding: '7px 12px', color: 'rgba(255,255,255,.75)', fontFamily: "'DM Mono',monospace",
-      fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '.06em', ...style
-    }}>{children}</button>
-  );
+    <div style={{
+      position: 'absolute',
+      top: 0, left: 0, right: 0,
+      height: '60%',
+      pointerEvents: 'none',
+      zIndex: 1,
+    }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+        {/* 月 */}
+        <circle cx="82" cy="14" r="6" fill="#f0d080" opacity="0.9" />
+        <circle cx="85" cy="12" r="5" fill="#0a0e12" />
+
+        {/* 星 */}
+        {stars.map((s, i) => (
+          <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="white" opacity="0.7">
+            <animate
+              attributeName="opacity"
+              values="0.3;0.9;0.3"
+              dur={`${2 + s.delay}s`}
+              repeatCount="indefinite"
+            />
+          </circle>
+        ))}
+      </svg>
+    </div>
+  )
 }
 
-/* ─────────── MAIN PAGE ─────────── */
+// ─────────────────────────────────────────────
+// メインページ
+// ─────────────────────────────────────────────
 export default function Home() {
-  const [origin, setOrigin] = useState('');
-  const [destination, setDestination] = useState('');
-  const [mode, setMode] = useState('walking');
-  const [loading, setLoading] = useState(false);
-  const [loaderMsg, setLoaderMsg] = useState({ ja: '', en: '', detail: '' });
-  const [steps, setSteps] = useState(null);
-  const [routeInfo, setRouteInfo] = useState(null);
+  const [screen, setScreen] = useState('top') // 'top' | 'viewer'
+  const [journey, setJourney] = useState(null)
 
-  const modes = [
-    { id: 'walking', ja: '🚶 徒歩', en: 'Walking' },
-    { id: 'driving', ja: '🚗 車', en: 'Driving' },
-    { id: 'bicycling', ja: '🚴 自転車', en: 'Cycling' },
-  ];
-
-  function stripHtml(h) { return h.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
-  function lerp(a, b, n) {
-    const pts = [];
-    for (let i = 0; i <= n; i++) { const t = i / n; pts.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t }); }
-    return pts;
+  const handleStart = (j) => {
+    setJourney(j)
+    setScreen('viewer')
   }
 
-  async function startJourney() {
-    if (!origin.trim()) return alert('出発地を入力してください');
-    if (!destination.trim()) return alert('目的地を入力してください');
-    setLoading(true);
-    setLoaderMsg({ ja: '住所を変換中', en: 'GEOCODING', detail: '座標を取得しています...' });
-    try {
-      const [og, dg] = await Promise.all([
-        fetch(`/api/geocode?address=${encodeURIComponent(origin)}`).then(r => r.json()),
-        fetch(`/api/geocode?address=${encodeURIComponent(destination)}`).then(r => r.json()),
-      ]);
-      if (og.status !== 'OK') throw new Error('出発地が見つかりません: ' + origin);
-      if (dg.status !== 'OK') throw new Error('目的地が見つかりません: ' + destination);
-      const oL = og.results[0].geometry.location;
-      const dL = dg.results[0].geometry.location;
-
-      setLoaderMsg({ ja: 'ルート計算中', en: 'DIRECTIONS', detail: '経路を取得しています...' });
-      const dr = await fetch(`/api/directions?origin=${oL.lat},${oL.lng}&destination=${dL.lat},${dL.lng}&mode=${mode}`).then(r => r.json());
-
-      let waypoints = [];
-      if (dr.status === 'OK' && dr.routes.length) {
-        // 所要時間・距離をrouteInfoとして保存
-        const leg = dr.routes[0].legs[0];
-        setRouteInfo({
-          duration: leg.duration?.text || '',
-          distance: leg.distance?.value >= 1000
-            ? leg.distance?.text || ''
-            : `${leg.distance?.value || ''}m`,
-        });
-        for (const leg of dr.routes[0].legs) {
-          for (const step of leg.steps) {
-            const instr = stripHtml(step.html_instructions);
-            const dist = step.distance?.text || '';
-            const sub = lerp(step.start_location, step.end_location, 4);
-            sub.forEach((p, i) => waypoints.push({ lat: p.lat, lng: p.lng, instruction: i === 0 ? instr : '', instructionEn: i === 0 ? instr : '', distance: i === 0 ? dist : '' }));
-          }
-          const last = leg.end_location;
-          waypoints.push({ lat: last.lat, lng: last.lng, instruction: '到着', instructionEn: 'Arrived', distance: '' });
-        }
-      } else {
-        // Fallback interpolation
-        const sub = lerp(oL, dL, 40);
-        waypoints = sub.map((p, i) => ({ lat: p.lat, lng: p.lng, instruction: i === 0 ? '出発' : i === 40 ? '到着' : `移動中 ${Math.round(i / 40 * 100)}%`, instructionEn: i === 0 ? 'Departure' : i === 40 ? 'Arrived' : `En route ${Math.round(i / 40 * 100)}%`, distance: '' }));
-      }
-
-      setLoaderMsg({ ja: '準備完了', en: 'READY', detail: `${waypoints.length}地点を取得しました` });
-      await new Promise(r => setTimeout(r, 400));
-      setSteps(waypoints);
-    } catch (e) {
-      alert(e.message || 'エラーが発生しました');
-    }
-    setLoading(false);
+  const handleBack = () => {
+    setScreen('top')
+    setJourney(null)
   }
-
-  if (steps) return <Viewer steps={steps} origin={origin} destination={destination} travelMode={modes.find(m2 => m2.id === mode)?.ja || mode} routeInfo={routeInfo} onClose={() => setSteps(null)} />;
 
   return (
     <>
       <Head>
         <title>Street Journey</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="擬似旅行タイムラプスアプリ / Virtual Travel Timelapse" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet" />
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-          input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#ffc850; cursor:pointer; }
-          input[type=range] { -webkit-appearance:none; cursor:pointer; }
-          * { -webkit-tap-highlight-color: transparent; }
-          body { overflow-y: auto; overflow-x: hidden; background: #0e0e0e; }
-          ::placeholder { color: rgba(255,255,255,.25) !important; }
-        `}</style>
+        <link
+          href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Shippori+Mincho:wght@400;600&display=swap"
+          rel="stylesheet"
+        />
       </Head>
 
-      {loading && (
-        <div style={{ position: 'fixed', inset: 0, background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 200 }}>
-          <div style={{ width: 42, height: 42, border: '2px solid rgba(255,255,255,.15)', borderTopColor: 'rgba(255,255,255,.8)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,.9)', fontFamily: "'DM Mono',monospace", letterSpacing: '.06em' }}>{loaderMsg.ja}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.6)', letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.25)', letterSpacing: '.08em' }}>{loaderMsg.detail}</div>
-        </div>
-      )}
-
-      <div style={{ background: '#0e0e0e', minHeight: '100vh', paddingBottom: 32 }}>
-        {/* Header */}
-        <div style={{ padding: '28px 24px 16px', borderBottom: '1px solid rgba(255,255,255,.15)', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1, color: '#fff' }}>Street <span style={{ color: '#ffc850' }}>Journey</span></div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.6)', letterSpacing: '.1em', marginTop: 5 }}>行きたい場所へ、すぐ行こう。 / Go anywhere. Right now.</div>
-          </div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', border: '1px solid rgba(255,255,255,.12)', padding: '4px 8px', borderRadius: 20 }}>BETA v3</div>
-        </div>
-
-        {/* Route card */}
-        <Card title="Route / ルート">
-          <RouteInput value={origin} onChange={setOrigin} onSelect={setOrigin} placeholder="出発地 / Origin（例: 渋谷駅、Shibuya Station）" dotColor="#4ade80" label="Origin" />
-          <RouteInput value={destination} onChange={setDestination} onSelect={setDestination} placeholder="目的地 / Destination（例: 原宿駅、Harajuku）" dotColor="#f87171" label="Destination" />
-          <div style={{ padding: '4px 16px 10px', fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
-            日本語・英語・住所・施設名対応 / Supports Japanese, English, addresses & place names
-          </div>
-        </Card>
-
-        {/* Mode */}
-        <Card title="Travel Mode / 移動手段">
-          <div style={{ display: 'flex', padding: 10, gap: 6 }}>
-            {modes.map(m2 => (
-              <button key={m2.id} onClick={() => setMode(m2.id)} style={{
-                flex: 1, padding: '10px 4px',
-                border: `1px solid ${mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.22)'}`,
-                borderRadius: 8,
-                background: mode === m2.id ? 'rgba(255,200,80,.12)' : 'rgba(255,255,255,.04)',
-                color: mode === m2.id ? '#ffc850' : 'rgba(255,255,255,.6)',
-                cursor: 'pointer', fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '.04em',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, transition: 'all .15s',
-              }}>
-                {m2.ja}
-                <span style={{ fontSize: 8, opacity: .7 }}>{m2.en}</span>
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        {/* Start */}
-        <button onClick={startJourney} style={{
-          margin: '14px 16px 0', width: 'calc(100% - 32px)', padding: 17,
-          background: '#ffc850', color: '#0a0a0a', border: 'none', borderRadius: 12,
-          fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, letterSpacing: '.14em',
-          textTransform: 'uppercase', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        }}>
-          ▶ JOURNEY START
-          <span style={{ fontFamily: 'inherit', fontSize: 10, color: 'rgba(0,0,0,.5)', fontWeight: 400, letterSpacing: 0 }}>旅を始める</span>
-        </button>
+      <div style={{
+        maxWidth: 540,
+        margin: '0 auto',
+        position: 'relative',
+        fontFamily: "'DM Mono', monospace",
+      }}>
+        {screen === 'top' && (
+          <TopScreen onStart={handleStart} />
+        )}
+        {screen === 'viewer' && journey && (
+          <ViewerScreen journey={journey} onBack={handleBack} />
+        )}
       </div>
     </>
-  );
-}
-
-function Card({ title, children }) {
-  return (
-    <div style={{ margin: '14px 16px 0', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.18)', borderRadius: 12, overflow: 'visible' }}>
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,.15)', fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '.14em', color: 'rgba(255,255,255,.25)', textTransform: 'uppercase' }}>{title}</div>
-      {children}
-    </div>
-  );
+  )
 }
