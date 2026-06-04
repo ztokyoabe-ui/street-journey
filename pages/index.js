@@ -515,7 +515,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', background: t.vHeader, borderBottom: `1px solid ${t.vHeaderBorder}`, backdropFilter: 'blur(12px)', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
         <div onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: '0.14em', color: t.vTextSub, cursor: 'pointer', textTransform: 'uppercase' }}>← Back</div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 15, fontWeight: 600, color: t.vText, letterSpacing: '0.04em', transition: 'color 0.4s' }}>{origin} → {destination}</div>
+          <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 15, fontWeight: 600, color: t.vText, letterSpacing: '0.04em', transition: 'color 0.4s' }}>{origin} → {destination}</div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.vTextMuted, transition: 'color 0.4s' }}>
             {modeInfo.label} · {routeInfo?.distance || steps.length + ' waypoints'}
           </div>
@@ -739,10 +739,11 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Shippori+Mincho:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@300;400&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap" rel="stylesheet" />
         <style>{`
+          * { font-family: 'Zen Kaku Gothic New', 'Helvetica Neue', Arial, sans-serif !important; }
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-          body { background: ${light.bg}; font-family: 'Zen Kaku Gothic New', sans-serif; color: ${light.text}; overflow-x: hidden; }
+          body, input, button, select, textarea { background: transparent; font-family: 'Zen Kaku Gothic New', 'Helvetica Neue', Arial, sans-serif; color: ${light.text}; } body { background: ${light.bg}; overflow-x: hidden; }
           ::placeholder { color: ${light.textMuted} !important; }
           @keyframes sj-spin { to { transform: rotate(360deg); } }
           @keyframes sj-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
