@@ -771,13 +771,34 @@ export default function Home() {
         {/* FloatingIcon — ページ全体基準 */}
         <FloatingIcon activeMode={modeIdx} />
 
-        {/* Logo Header — 画像 */}
-        <div style={{ padding: '32px 28px 16px', position: 'relative', zIndex: 3 }}>
+        {/* Logo Header */}
+        <div style={{ padding: '28px 28px 0', position: 'relative', zIndex: 3 }}>
+          {/* メインロゴ画像 — mix-blend-modeで白背景を透過 */}
           <img
             src="/stj-logo.png"
             alt="Street Journey"
-            style={{ width: '100%', maxWidth: 380, display: 'block' }}
+            style={{
+              width: '72%',
+              maxWidth: 300,
+              display: 'block',
+              mixBlendMode: 'multiply',
+            }}
           />
+          {/* サブコピー */}
+          <div style={{
+            marginTop: 10,
+            fontFamily: "'Zen Kaku Gothic New', sans-serif",
+            fontWeight: 400,
+            fontSize: 10,
+            color: light.accent,
+            letterSpacing: '0.12em',
+            lineHeight: 1.9,
+          }}>
+            <div>VIRTUAL ROUTE EXPLORER | v.3.0</div>
+            <div>READY TO EXPLORE &gt;&gt;&gt;</div>
+            <div style={{ color: light.text, fontSize: 12, marginTop: 2 }}>Every street has a story.</div>
+            <div style={{ color: light.textSub, fontSize: 11 }}>Set your route and travel mode, then start your journey.</div>
+          </div>
         </div>
 
         {/* Cards */}
