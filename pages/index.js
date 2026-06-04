@@ -360,7 +360,7 @@ function RouteInput({ value, onChange, onSelect, placeholder, dotColor, t }) {
           onBlur={() => setTimeout(() => { setFocused(false); clearSuggestions(); }, 180)}
           placeholder={placeholder}
           autoComplete="off" autoCorrect="off" spellCheck={false}
-          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: t.text, fontFamily: "'DM Mono', monospace", minWidth: 0 }}
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: t.text, fontFamily: "'Zen Kaku Gothic New', sans-serif", minWidth: 0 }}
         />
         {loading && <div style={{ width: 12, height: 12, border: `2px solid ${t.surfaceBorder}`, borderTopColor: t.accent, borderRadius: '50%', animation: 'sj-spin .6s linear infinite', flexShrink: 0 }} />}
         {value && <button onClick={() => { onChange(''); clearSuggestions(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, fontSize: 14, padding: '0 2px' }}>×</button>}
@@ -520,7 +520,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
             {modeInfo.label} · {routeInfo?.distance || steps.length + ' waypoints'}
           </div>
         </div>
-        <button onClick={toggleNight} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.14em', background: isNight ? 'rgba(42,157,143,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isNight ? 'rgba(42,157,143,0.4)' : 'rgba(42,157,143,0.2)'}`, color: isNight ? '#4fc3b4' : '#2a9d8f', borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'DM Mono', monospace", transition: 'all 0.3s' }}>
+        <button onClick={toggleNight} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.14em', background: isNight ? 'rgba(42,157,143,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isNight ? 'rgba(42,157,143,0.4)' : 'rgba(42,157,143,0.2)'}`, color: isNight ? '#4fc3b4' : '#2a9d8f', borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
           {isNight ? '🌙' : '☀️'}
           <span style={{ fontSize: 8, letterSpacing: '0.12em' }}>{timeStr}</span>
         </button>
@@ -554,32 +554,32 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         <div style={{ position: 'absolute', bottom: 12, right: 14, width: 100, borderRadius: 8, overflow: 'hidden', border: `1px solid ${t.minimapBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.15)', zIndex: 8, background: t.minimapBg, transition: 'border-color 0.4s' }}>
           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.1)' }}>
             {[{ key: 'current', label: '現在地' }, { key: 'route', label: 'ルート' }].map(({ key, label }) => (
-              <button key={key} onClick={() => setMinimapMode(key)} style={{ flex: 1, padding: '3px 0', border: 'none', cursor: 'pointer', background: minimapMode === key ? 'rgba(42,157,143,0.15)' : 'transparent', borderBottom: minimapMode === key ? `2px solid ${light.accent}` : '2px solid transparent', fontFamily: "'DM Mono',monospace", fontSize: 7, color: minimapMode === key ? light.accent : t.textMuted, letterSpacing: '.05em', transition: 'all .15s' }}>{label}</button>
+              <button key={key} onClick={() => setMinimapMode(key)} style={{ flex: 1, padding: '3px 0', border: 'none', cursor: 'pointer', background: minimapMode === key ? 'rgba(42,157,143,0.15)' : 'transparent', borderBottom: minimapMode === key ? `2px solid ${light.accent}` : '2px solid transparent', fontFamily: "'Zen Kaku Gothic New',sans-serif", fontSize: 7, color: minimapMode === key ? light.accent : t.textMuted, letterSpacing: '.05em', transition: 'all .15s' }}>{label}</button>
             ))}
           </div>
           <div style={{ height: 72, position: 'relative' }}>
             {minimapMode === 'current'
               ? minimapSrc ? <img src={minimapSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: t.textMuted, fontFamily: "'DM Mono',monospace" }}>読込中</div>
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: t.textMuted, fontFamily: "'Zen Kaku Gothic New',sans-serif" }}>読込中</div>
               : routeMapSrc ? <img src={routeMapSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: t.textMuted, fontFamily: "'DM Mono',monospace" }}>読込中</div>}
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: t.textMuted, fontFamily: "'Zen Kaku Gothic New',sans-serif" }}>読込中</div>}
           </div>
         </div>
 
         {/* Step instruction */}
         <div style={{ position: 'absolute', bottom: 14, left: 18, right: 126, zIndex: 5 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 1.3, textShadow: '0 1px 10px rgba(0,0,0,0.9)' }}>{step.instruction || '移動中'}</div>
-          {step.distance && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{step.distance}</div>}
+          {step.distance && <div style={{ fontFamily: "'Zen Kaku Gothic New',sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{step.distance}</div>}
         </div>
 
         {isRecording && (
           <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(0,0,0,0.6)', padding: '4px 10px', borderRadius: 20, zIndex: 20 }}>
             <div style={{ width: 6, height: 6, background: light.danger, borderRadius: '50%', animation: 'sj-blink 1.2s infinite' }} />
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: '#fff', letterSpacing: '.1em' }}>REC</span>
+            <span style={{ fontFamily: "'Zen Kaku Gothic New',sans-serif", fontSize: 9, color: '#fff', letterSpacing: '.1em' }}>REC</span>
           </div>
         )}
 
-        <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.6)', zIndex: 5, background: 'rgba(0,0,0,0.3)', padding: '3px 10px', borderRadius: 20 }}>
+        <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', fontFamily: "'Zen Kaku Gothic New',sans-serif", fontSize: 10, color: 'rgba(255,255,255,0.6)', zIndex: 5, background: 'rgba(0,0,0,0.3)', padding: '3px 10px', borderRadius: 20 }}>
           {cur + 1} / {steps.length}
         </div>
       </div>
@@ -602,13 +602,13 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
       <div style={{ background: t.vBottom, borderTop: `1px solid ${t.vBottomBorder}`, padding: '14px 18px 18px', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
         {/* Scrubber */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: t.vTextMuted, minWidth: 28, fontFamily: "'DM Mono',monospace", transition: 'color 0.4s' }}>{cur}</span>
+          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: t.vTextMuted, minWidth: 28, fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'color 0.4s' }}>{cur}</span>
           <div style={{ flex: 1, height: 3, borderRadius: 2, background: t.vScrubTrack, position: 'relative', cursor: 'pointer', transition: 'background 0.4s' }}
             onClick={e => { const rect = e.currentTarget.getBoundingClientRect(); goTo(Math.round((e.clientX - rect.left) / rect.width * (steps.length - 1))); }}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: pct + '%', background: `linear-gradient(to right, ${light.accent}, ${light.accentLight})`, borderRadius: 2 }} />
             <div style={{ position: 'absolute', top: '50%', left: pct + '%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: t.vThumb, boxShadow: `0 0 8px rgba(42,157,143,0.5)`, transition: 'background 0.4s' }} />
           </div>
-          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: t.vTextMuted, minWidth: 28, textAlign: 'right', fontFamily: "'DM Mono',monospace", transition: 'color 0.4s' }}>{steps.length - 1}</span>
+          <span style={{ fontSize: 9, letterSpacing: '0.1em', color: t.vTextMuted, minWidth: 28, textAlign: 'right', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'color 0.4s' }}>{steps.length - 1}</span>
         </div>
 
         {/* Controls row */}
@@ -616,7 +616,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
           {/* Speed */}
           <div style={{ display: 'flex', gap: 5 }}>
             {SPEEDS.map((s, i) => (
-              <button key={s.label} onClick={() => setSpeed(i)} style={{ fontSize: 9, letterSpacing: '0.08em', padding: '4px 9px', borderRadius: 20, border: `1px solid ${speed === i ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === i ? t.vSpeedActiveBg : 'transparent', color: speed === i ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'DM Mono',monospace", transition: 'all 0.2s' }}>{s.label}</button>
+              <button key={s.label} onClick={() => setSpeed(i)} style={{ fontSize: 9, letterSpacing: '0.08em', padding: '4px 9px', borderRadius: 20, border: `1px solid ${speed === i ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === i ? t.vSpeedActiveBg : 'transparent', color: speed === i ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{s.label}</button>
             ))}
           </div>
 
@@ -641,8 +641,8 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
 
           {/* Progress info */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: '0.06em', color: t.vProgressText, fontFamily: "'DM Mono',monospace", transition: 'color 0.4s' }}>{routeInfo?.distance || ''}</div>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: t.vProgressSub, fontFamily: "'DM Mono',monospace", transition: 'color 0.4s' }}>{routeInfo?.duration || ''}</div>
+            <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: '0.06em', color: t.vProgressText, fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'color 0.4s' }}>{routeInfo?.distance || ''}</div>
+            <div style={{ fontSize: 9, letterSpacing: '0.12em', color: t.vProgressSub, fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'color 0.4s' }}>{routeInfo?.duration || ''}</div>
           </div>
         </div>
       </div>
@@ -742,7 +742,7 @@ export default function Home() {
         <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Shippori+Mincho:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@300;400&display=swap" rel="stylesheet" />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-          body { background: ${light.bg}; font-family: 'DM Mono', monospace; color: ${light.text}; overflow-x: hidden; }
+          body { background: ${light.bg}; font-family: 'Zen Kaku Gothic New', sans-serif; color: ${light.text}; overflow-x: hidden; }
           ::placeholder { color: ${light.textMuted} !important; }
           @keyframes sj-spin { to { transform: rotate(360deg); } }
           @keyframes sj-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
@@ -757,7 +757,7 @@ export default function Home() {
       {loading && (
         <div style={{ position: 'fixed', inset: 0, background: light.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 200 }}>
           <div style={{ width: 40, height: 40, border: `2px solid ${light.surfaceBorder}`, borderTopColor: light.accent, borderRadius: '50%', animation: 'sj-spin .7s linear infinite' }} />
-          <div style={{ fontSize: 14, color: light.text, fontFamily: "'DM Mono',monospace", letterSpacing: '.06em' }}>{loaderMsg.ja}</div>
+          <div style={{ fontSize: 14, color: light.text, fontFamily: "'Zen Kaku Gothic New',sans-serif", letterSpacing: '.06em' }}>{loaderMsg.ja}</div>
           <div style={{ fontSize: 10, color: light.textMuted, letterSpacing: '.15em', textTransform: 'uppercase' }}>{loaderMsg.en}</div>
           <div style={{ fontSize: 10, color: light.textMuted, letterSpacing: '.08em' }}>{loaderMsg.detail}</div>
         </div>
@@ -796,8 +796,8 @@ export default function Home() {
           }}>
             <div>VIRTUAL ROUTE EXPLORER | v.3.0</div>
             <div>READY TO EXPLORE &gt;&gt;&gt;</div>
-            <div style={{ color: light.text, fontSize: 12, marginTop: 2 }}>Every street has a story.</div>
-            <div style={{ color: light.textSub, fontSize: 11 }}>Set your route and travel mode, then start your journey.</div>
+            <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, color: light.text, fontSize: 13, marginTop: 4, letterSpacing: '0.04em' }}>Every street has a story.</div>
+            <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, color: light.textSub, fontSize: 11, letterSpacing: '0.04em' }}>Set your route and travel mode, then start your journey.</div>
           </div>
         </div>
 
@@ -831,7 +831,7 @@ export default function Home() {
 
         {/* Start button */}
         <div style={{ padding: '20px 20px 0', position: 'relative', zIndex: 1 }}>
-          <button onClick={startJourney} style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.28)', transition: 'background 0.2s, transform 0.15s, box-shadow 0.2s' }}
+          <button onClick={startJourney} style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.28)', transition: 'background 0.2s, transform 0.15s, box-shadow 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.background = light.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = light.accent; e.currentTarget.style.transform = 'translateY(0)'; }}>
             Start Journey <span style={{ fontSize: 16 }}>→</span>
