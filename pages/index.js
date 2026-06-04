@@ -215,16 +215,29 @@ const MODES = [
 ];
 
 // ── FLOATING ICON (L-path, 6462ms/loop) ──────────────────────────
+// 座標系: ページ全体(max-width:540px)の左上を原点とするpx座標
+// Phase A: 右欄外(x=560) → x=310  y=148(heroタイトルの高さ)  水平左移動
+// Phase B: x=310  y=148 → y=76(ヘッダー下の余白)  垂直上昇
+// Phase C: x=310 → x=-60  y=76  水平左移動して欄外へ消える
 function FloatingIcon({ activeMode }) {
-  const tRef = useRef(0);
+  const elRef = useRef(null);
   const rafRef = useRef(null);
-  const [pos, setPos] = useState({ x: 500, y: 260, opacity: 0 });
+  const tRef = useRef(0);
 
   const DURATION = 6462;
-  const START_X = 490, TURN_X = 300, TURN_Y = 260, EXIT_Y = 108, EXIT_X = -60;
-  const distA = START_X - TURN_X;
-  const distB = TURN_Y - EXIT_Y;
-  const distC = TURN_X - EXIT_X;
+  // ページ座標 (px) — 赤線書き込み準拠:
+  // ヘッダー高さ ≒ 80px (Street Journey ロゴ行)
+  // サブテキスト "VIRTUAL ROUTE EXPLORER" ≒ y=96px
+  // "READY TO EXPLORE" eyebrow ≒ y=136px (hero padding 36 + margin)
+  // タイトル "Every street" 中段 ≒ y=176px  ← Phase A/B の折れ点Y
+  // ロゴとサブテキストの間の余白中央 ≒ y=88px  ← Phase C のY (EXIT_Y)
+  // TURN_X: "story." 右端より少し右 ≒ x=330px
+  // START_X: 右欄外 ≒ x=580px
+  // EXIT_X: 左欄外 ≒ x=-60px
+  const START_X = 580, TURN_X = 330, TURN_Y = 176, EXIT_Y = 88, EXIT_X = -60;
+  const distA = START_X - TURN_X;   // 250
+  const distB = TURN_Y - EXIT_Y;    // 88
+  const distC = TURN_X - EXIT_X;    // 390
   const total = distA + distB + distC;
   const tA = distA / total;
   const tB = tA + distB / total;
@@ -240,16 +253,19 @@ function FloatingIcon({ activeMode }) {
       if (t < tA) {
         const p = t / tA;
         x = START_X - p * distA; y = TURN_Y;
-        opacity = t < 0.04 ? (t / 0.04) * 0.55 : 0.55;
+        opacity = t < 0.04 ? (t / 0.04) * 0.6 : 0.6;
       } else if (t < tB) {
         const p = (t - tA) / (tB - tA);
-        x = TURN_X; y = TURN_Y - p * distB; opacity = 0.55;
+        x = TURN_X; y = TURN_Y - p * distB; opacity = 0.6;
       } else {
         const p = (t - tB) / (1 - tB);
         x = TURN_X - p * distC; y = EXIT_Y;
-        opacity = p > 0.88 ? (1 - (p - 0.88) / 0.12) * 0.55 : 0.55;
+        opacity = p > 0.85 ? (1 - (p - 0.85) / 0.15) * 0.6 : 0.6;
       }
-      setPos({ x, y, opacity });
+      if (elRef.current) {
+        elRef.current.style.transform = `translate(${x - 18}px, ${y - 26}px)`;
+        elRef.current.style.opacity = opacity;
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -258,8 +274,9 @@ function FloatingIcon({ activeMode }) {
 
   const Icon = MODES[activeMode].Icon;
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0, overflow: 'visible' }}>
-      <div style={{ position: 'absolute', left: pos.x, top: pos.y, transform: 'translate(-50%,-50%)', opacity: pos.opacity, transition: 'opacity 0.15s' }}>
+    // ページ全体を覆う絶対配置レイヤー（スクロールと無関係に画面固定ではなくページ基準）
+    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}>
+      <div ref={elRef} style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform, opacity', opacity: 0 }}>
         <Icon color={light.accent} size="large" />
       </div>
     </div>
@@ -748,11 +765,14 @@ export default function Home() {
 
       <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 40, position: 'relative', overflow: 'hidden', maxWidth: 540, margin: '0 auto' }}>
         {/* BG circles */}
-        <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,230,226,0.55) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,191,158,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,230,226,0.55) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+        <div style={{ position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,191,158,0.18) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+
+        {/* FloatingIcon — ページ全体基準 */}
+        <FloatingIcon activeMode={modeIdx} />
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 28px 0', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 28px 0', position: 'relative', zIndex: 3 }}>
           <div>
             <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 20, fontWeight: 700, letterSpacing: '0.06em', color: light.text }}>Street Journey</div>
             <div style={{ fontSize: 9, letterSpacing: '0.22em', color: light.textMuted, textTransform: 'uppercase', marginTop: 2 }}>Virtual Route Explorer</div>
@@ -760,24 +780,21 @@ export default function Home() {
           <div style={{ fontSize: 10, letterSpacing: '0.14em', color: light.accent, border: `1px solid ${light.accent}`, padding: '5px 14px', borderRadius: 20, opacity: 0.85 }}>v3.0</div>
         </div>
 
-        {/* Hero + Floating Icon */}
-        <div style={{ padding: '36px 28px 0', position: 'relative', zIndex: 0 }}>
-          <FloatingIcon activeMode={modeIdx} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.24em', textTransform: 'uppercase', color: light.textMuted, marginBottom: 10 }}>Ready to explore</div>
-            <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 30, fontWeight: 700, lineHeight: 1.3, color: light.text, marginBottom: 6 }}>
-              Every street<br />has a <span style={{ color: light.accent }}>story</span>.
-            </div>
-            <div style={{ fontSize: 11, color: light.textSub, letterSpacing: '0.05em', lineHeight: 1.7 }}>
-              Set your route and travel mode,<br />then start your journey.
-            </div>
+        {/* Hero */}
+        <div style={{ padding: '36px 28px 0', position: 'relative', zIndex: 3 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.24em', textTransform: 'uppercase', color: light.textMuted, marginBottom: 10 }}>Ready to explore</div>
+          <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 30, fontWeight: 700, lineHeight: 1.3, color: light.text, marginBottom: 6 }}>
+            Every street<br />has a <span style={{ color: light.accent }}>story</span>.
+          </div>
+          <div style={{ fontSize: 11, color: light.textSub, letterSpacing: '0.05em', lineHeight: 1.7 }}>
+            Set your route and travel mode,<br />then start your journey.
           </div>
         </div>
 
         {/* Cards */}
-        <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', zIndex: 10 }}>
           {/* Route card */}
-          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '18px 0 0', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)' }}>
+          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '18px 0 0', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)', overflow: 'visible', position: 'relative', zIndex: 20 }}>
             <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: light.accent, marginBottom: 10, padding: '0 18px' }}>Route</div>
             <RouteInput value={origin} onChange={setOrigin} onSelect={setOrigin}
               placeholder="出発地 / Origin" dotColor={light.green} t={t} />
