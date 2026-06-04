@@ -739,7 +739,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Shippori+Mincho:wght@400;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Shippori+Mincho:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@300;400&display=swap" rel="stylesheet" />
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
           body { background: ${light.bg}; font-family: 'DM Mono', monospace; color: ${light.text}; overflow-x: hidden; }
@@ -771,23 +771,45 @@ export default function Home() {
         {/* FloatingIcon — ページ全体基準 */}
         <FloatingIcon activeMode={modeIdx} />
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 28px 0', position: 'relative', zIndex: 3 }}>
-          <div>
-            <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 20, fontWeight: 700, letterSpacing: '0.06em', color: light.text }}>Street Journey</div>
-            <div style={{ fontSize: 9, letterSpacing: '0.22em', color: light.textMuted, textTransform: 'uppercase', marginTop: 2 }}>Virtual Route Explorer</div>
+        {/* Logo Header */}
+        <div style={{ padding: '32px 28px 0', position: 'relative', zIndex: 3 }}>
+          {/* STREET JOURNEY big logo */}
+          <div style={{ position: 'relative', lineHeight: 1, marginBottom: 4 }}>
+            {/* Accent circles behind letters */}
+            {/* Circle on R of STREET */}
+            <div style={{ position: 'absolute', width: 72, height: 72, borderRadius: '50%', background: light.accent, top: 2, left: 68, zIndex: 0 }} />
+            {/* Circle on O of JOURNEY */}
+            <div style={{ position: 'absolute', width: 88, height: 88, borderRadius: '50%', background: light.accent, top: 82, left: 30, zIndex: 0 }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{
+                fontFamily: "'Zen Kaku Gothic New', sans-serif",
+                fontSize: 80,
+                fontWeight: 300,
+                letterSpacing: '0.08em',
+                color: light.accent,
+                lineHeight: 1,
+                WebkitTextStroke: '2px ' + light.accent,
+                WebkitTextFillColor: 'transparent',
+              }}>STREET</div>
+              <div style={{
+                fontFamily: "'Zen Kaku Gothic New', sans-serif",
+                fontSize: 80,
+                fontWeight: 300,
+                letterSpacing: '0.08em',
+                color: light.accent,
+                lineHeight: 1,
+                WebkitTextStroke: '2px ' + light.accent,
+                WebkitTextFillColor: 'transparent',
+              }}>JOURNEY</div>
+            </div>
           </div>
-          <div style={{ fontSize: 10, letterSpacing: '0.14em', color: light.accent, border: `1px solid ${light.accent}`, padding: '5px 14px', borderRadius: 20, opacity: 0.85 }}>v3.0</div>
-        </div>
 
-        {/* Hero */}
-        <div style={{ padding: '36px 28px 0', position: 'relative', zIndex: 3 }}>
-          <div style={{ fontSize: 9, letterSpacing: '0.24em', textTransform: 'uppercase', color: light.textMuted, marginBottom: 10 }}>Ready to explore</div>
-          <div style={{ fontFamily: "'Shippori Mincho', serif", fontSize: 30, fontWeight: 700, lineHeight: 1.3, color: light.text, marginBottom: 6 }}>
-            Every street<br />has a <span style={{ color: light.accent }}>story</span>.
-          </div>
-          <div style={{ fontSize: 11, color: light.textSub, letterSpacing: '0.05em', lineHeight: 1.7 }}>
-            Set your route and travel mode,<br />then start your journey.
+          {/* Sub info row */}
+          <div style={{ marginTop: 20, fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, fontSize: 11, color: light.accent, letterSpacing: '0.1em', lineHeight: 1.8 }}>
+            <div>VIRTUAL ROUTE EXPLORER | v.3.0</div>
+            <div>READY TO EXPLORE &gt;&gt;&gt;</div>
+            <div style={{ color: light.text, fontSize: 13, marginTop: 4 }}>Every street has a story.</div>
+            <div style={{ color: light.textSub, fontSize: 12 }}>Set your route and travel mode,<br />then start your journey.</div>
           </div>
         </div>
 
