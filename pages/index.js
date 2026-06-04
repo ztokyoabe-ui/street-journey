@@ -515,10 +515,15 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', background: t.vHeader, borderBottom: `1px solid ${t.vHeaderBorder}`, backdropFilter: 'blur(12px)', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
         <div onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: '0.14em', color: t.vTextSub, cursor: 'pointer', textTransform: 'uppercase' }}>← Back</div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 15, fontWeight: 600, color: t.vText, letterSpacing: '0.04em', transition: 'color 0.4s' }}>{origin} → {destination}</div>
-          <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.vTextMuted, transition: 'color 0.4s' }}>
+          <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 15, fontWeight: 600, color: t.accent, letterSpacing: '0.04em', transition: 'color 0.4s' }}>{origin} → {destination}</div>
+          <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.accent, opacity: 0.7, transition: 'color 0.4s' }}>
             {modeInfo.label} · {routeInfo?.distance || steps.length + ' waypoints'}
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button onClick={toggleRecord} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.12em', background: isRecording ? 'rgba(231,111,81,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isRecording ? light.danger : 'rgba(42,157,143,0.2)'}`, color: isRecording ? light.danger : t.vTextSub, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
+            {isRecording ? '⏹' : '⏺'}<span style={{ fontSize: 8, letterSpacing: '0.12em' }}>{isRecording ? 'STOP' : 'REC'}</span>
+          </button>
         </div>
         <button onClick={toggleNight} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.14em', background: isNight ? 'rgba(42,157,143,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isNight ? 'rgba(42,157,143,0.4)' : 'rgba(42,157,143,0.2)'}`, color: isNight ? '#4fc3b4' : '#2a9d8f', borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
           {isNight ? '🌙' : '☀️'}
