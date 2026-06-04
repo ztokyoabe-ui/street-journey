@@ -771,46 +771,13 @@ export default function Home() {
         {/* FloatingIcon — ページ全体基準 */}
         <FloatingIcon activeMode={modeIdx} />
 
-        {/* Logo Header */}
-        <div style={{ padding: '32px 28px 0', position: 'relative', zIndex: 3 }}>
-          {/* STREET JOURNEY big logo */}
-          <div style={{ position: 'relative', lineHeight: 1, marginBottom: 4 }}>
-            {/* Accent circles behind letters */}
-            {/* Circle on R of STREET — 文字内側に収まるサイズ */}
-            <div style={{ position: 'absolute', width: 52, height: 52, borderRadius: '50%', background: light.accent, top: 10, left: 108, zIndex: 0 }} />
-            {/* Circle on J/O of JOURNEY */}
-            <div style={{ position: 'absolute', width: 52, height: 52, borderRadius: '50%', background: light.accent, top: 94, left: 6, zIndex: 0 }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{
-                fontFamily: "'Zen Kaku Gothic New', sans-serif",
-                fontSize: 80,
-                fontWeight: 300,
-                letterSpacing: '0.08em',
-                color: light.accent,
-                lineHeight: 1,
-                WebkitTextStroke: '2px ' + light.accent,
-                WebkitTextFillColor: 'transparent',
-              }}>STREET</div>
-              <div style={{
-                fontFamily: "'Zen Kaku Gothic New', sans-serif",
-                fontSize: 80,
-                fontWeight: 300,
-                letterSpacing: '0.08em',
-                color: light.accent,
-                lineHeight: 1,
-                WebkitTextStroke: '2px ' + light.accent,
-                WebkitTextFillColor: 'transparent',
-              }}>JOURNEY</div>
-            </div>
-          </div>
-
-          {/* Sub info row */}
-          <div style={{ marginTop: 20, fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, fontSize: 11, color: light.accent, letterSpacing: '0.1em', lineHeight: 1.8 }}>
-            <div>VIRTUAL ROUTE EXPLORER | v.3.0</div>
-            <div>READY TO EXPLORE &gt;&gt;&gt;</div>
-            <div style={{ color: light.text, fontSize: 13, marginTop: 4 }}>Every street has a story.</div>
-            <div style={{ color: light.textSub, fontSize: 12 }}>Set your route and travel mode,<br />then start your journey.</div>
-          </div>
+        {/* Logo Header — 画像 */}
+        <div style={{ padding: '32px 28px 16px', position: 'relative', zIndex: 3 }}>
+          <img
+            src="/stj-logo.png"
+            alt="Street Journey"
+            style={{ width: '100%', maxWidth: 380, display: 'block' }}
+          />
         </div>
 
         {/* Cards */}
