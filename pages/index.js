@@ -776,10 +776,10 @@ export default function Home() {
           {/* STREET JOURNEY big logo */}
           <div style={{ position: 'relative', lineHeight: 1, marginBottom: 4 }}>
             {/* Accent circles behind letters */}
-            {/* Circle on R of STREET */}
-            <div style={{ position: 'absolute', width: 72, height: 72, borderRadius: '50%', background: light.accent, top: 2, left: 68, zIndex: 0 }} />
-            {/* Circle on O of JOURNEY */}
-            <div style={{ position: 'absolute', width: 88, height: 88, borderRadius: '50%', background: light.accent, top: 82, left: 30, zIndex: 0 }} />
+            {/* Circle on R of STREET — 文字内側に収まるサイズ */}
+            <div style={{ position: 'absolute', width: 52, height: 52, borderRadius: '50%', background: light.accent, top: 10, left: 108, zIndex: 0 }} />
+            {/* Circle on J/O of JOURNEY */}
+            <div style={{ position: 'absolute', width: 52, height: 52, borderRadius: '50%', background: light.accent, top: 94, left: 6, zIndex: 0 }} />
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{
                 fontFamily: "'Zen Kaku Gothic New', sans-serif",
