@@ -794,7 +794,7 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(60px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'visible', maxWidth: 540, margin: '0 auto' }}>
+      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(100px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'visible', maxWidth: 540, margin: '0 auto' }}>
         {/* BG circles */}
         <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,230,226,0.55) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
         <div style={{ position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,191,158,0.18) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
@@ -860,7 +860,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Start button */}
+        {/* Start button — fixed at bottom, always above keyboard */}
         <div style={{ padding: '20px 20px 0', position: 'relative', zIndex: 1 }}>
           <button onClick={startJourney} style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.28)', transition: 'background 0.2s, transform 0.15s, box-shadow 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.background = light.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; }}
@@ -868,6 +868,16 @@ export default function Home() {
             Start Journey <span style={{ fontSize: 16 }}>→</span>
           </button>
         </div>
+      </div>
+
+      {/* START JOURNEY — fixed footer, always visible above Safari toolbar & keyboard */}
+      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 540, padding: '12px 20px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', background: `linear-gradient(transparent, ${light.bg} 30%)`, zIndex: 500, pointerEvents: 'none' }}>
+        <button onClick={startJourney}
+          style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.35)', pointerEvents: 'auto', transition: 'background 0.2s, transform 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = light.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = light.accent; e.currentTarget.style.transform = 'translateY(0)'; }}>
+          Start Journey <span style={{ fontSize: 16 }}>→</span>
+        </button>
       </div>
     </>
   );
