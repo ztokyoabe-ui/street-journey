@@ -803,81 +803,68 @@ export default function Home() {
         <FloatingIcon activeMode={modeIdx} />
 
         {/* Logo Header */}
-        <div style={{ padding: '28px 28px 0', position: 'relative', zIndex: 3 }}>
+        <div style={{ padding: '20px 28px 0', position: 'relative', zIndex: 3 }}>
           {/* メインロゴ画像 — mix-blend-modeで白背景を透過 */}
           <img
             src="/stj-logo.png"
             alt="Street Journey"
             style={{
-              width: '72%',
-              maxWidth: 300,
+              width: '65%',
+              maxWidth: 260,
               display: 'block',
               mixBlendMode: 'multiply',
             }}
           />
           {/* サブコピー */}
           <div style={{
-            marginTop: 10,
+            marginTop: 6,
             fontFamily: "'Zen Kaku Gothic New', sans-serif",
             fontWeight: 400,
-            fontSize: 10,
+            fontSize: 9,
             color: light.accent,
             letterSpacing: '0.12em',
-            lineHeight: 1.9,
+            lineHeight: 1.7,
           }}>
             <div>VIRTUAL ROUTE EXPLORER | v.3.0</div>
-            <div>READY TO EXPLORE &gt;&gt;&gt;</div>
-            <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, color: light.text, fontSize: 13, marginTop: 4, letterSpacing: '0.04em' }}>Every street has a story.</div>
-            <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, color: light.textSub, fontSize: 11, letterSpacing: '0.04em' }}>Set your route and travel mode, then start your journey.</div>
+            <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontWeight: 400, color: light.text, fontSize: 12, marginTop: 3, letterSpacing: '0.04em' }}>Every street has a story.</div>
           </div>
         </div>
 
         {/* Cards */}
-        <div style={{ padding: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', zIndex: 10 }}>
+        <div style={{ padding: '16px 20px 0', display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 10 }}>
           {/* Route card */}
-          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '18px 0 0', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)', overflow: 'visible', position: 'relative', zIndex: 20 }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: light.accent, marginBottom: 10, padding: '0 18px' }}>Route</div>
+          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '14px 0 0', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)', overflow: 'visible', position: 'relative', zIndex: 20 }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: light.accent, marginBottom: 8, padding: '0 18px' }}>Route</div>
             <RouteInput value={origin} onChange={setOrigin} onSelect={setOrigin}
               placeholder="出発地 / Origin" dotColor={light.green} t={t} />
             <RouteInput value={destination} onChange={setDestination} onSelect={setDestination}
               placeholder="目的地 / Destination" dotColor={light.danger} t={t} />
-            <div style={{ padding: '8px 18px 14px', fontSize: 9, color: light.textMuted, letterSpacing: '0.08em' }}>
+            <div style={{ padding: '6px 18px 10px', fontSize: 9, color: light.textMuted, letterSpacing: '0.08em' }}>
               日本語・英語・住所・施設名対応
             </div>
           </div>
 
           {/* Travel Mode card */}
-          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '18px 18px 16px', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)' }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: light.accent, marginBottom: 12 }}>Travel Mode</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div style={{ background: light.surface, border: `1px solid ${light.surfaceBorder}`, borderRadius: 16, padding: '14px 18px 12px', backdropFilter: 'blur(12px)', boxShadow: '0 2px 20px rgba(42,157,143,0.06)' }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: light.accent, marginBottom: 10 }}>Travel Mode</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map((m, i) => (
-                <button key={m.id} onClick={() => setModeIdx(i)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 8px', borderRadius: 12, background: modeIdx === i ? light.accentBg : 'transparent', border: `1.5px solid ${modeIdx === i ? light.accent : light.surfaceBorder}`, cursor: 'pointer', transition: 'all 0.18s' }}>
+                <button key={m.id} onClick={() => setModeIdx(i)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 12, background: modeIdx === i ? light.accentBg : 'transparent', border: `1.5px solid ${modeIdx === i ? light.accent : light.surfaceBorder}`, cursor: 'pointer', transition: 'all 0.18s' }}>
                   <m.Icon color={modeIdx === i ? light.accent : light.textMuted} size="small" />
                   <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: modeIdx === i ? light.accent : light.textSub }}>{m.label}</span>
                 </button>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Start button — fixed at bottom, always above keyboard */}
-        <div style={{ padding: '20px 20px 0', position: 'relative', zIndex: 1 }}>
-          <button onClick={startJourney} style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.28)', transition: 'background 0.2s, transform 0.15s, box-shadow 0.2s' }}
+          {/* Start button — inline, always visible */}
+          <button onClick={startJourney}
+            style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.28)', transition: 'background 0.2s, transform 0.15s, box-shadow 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.background = light.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = light.accent; e.currentTarget.style.transform = 'translateY(0)'; }}>
             Start Journey <span style={{ fontSize: 16 }}>→</span>
           </button>
         </div>
-      </div>
-
-      {/* START JOURNEY — fixed footer, always visible above Safari toolbar & keyboard */}
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 540, padding: '12px 20px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', background: `linear-gradient(transparent, ${light.bg} 30%)`, zIndex: 500, pointerEvents: 'none' }}>
-        <button onClick={startJourney}
-          style={{ width: '100%', background: light.accent, color: '#fff', border: 'none', borderRadius: 14, padding: '17px 32px', fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 12, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, boxShadow: '0 4px 24px rgba(42,157,143,0.35)', pointerEvents: 'auto', transition: 'background 0.2s, transform 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = light.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = light.accent; e.currentTarget.style.transform = 'translateY(0)'; }}>
-          Start Journey <span style={{ fontSize: 16 }}>→</span>
-        </button>
       </div>
     </>
   );
