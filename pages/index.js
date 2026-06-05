@@ -773,7 +773,7 @@ export default function Home() {
         <style>{`
           * { font-family: 'Zen Kaku Gothic New', 'Helvetica Neue', Arial, sans-serif !important; }
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-          body, input, button, select, textarea { background: transparent; font-family: 'Zen Kaku Gothic New', 'Helvetica Neue', Arial, sans-serif; color: ${light.text}; } body { background: ${light.bg}; overflow-x: hidden; }
+          body, input, button, select, textarea { background: transparent; font-family: 'Zen Kaku Gothic New', 'Helvetica Neue', Arial, sans-serif; color: ${light.text}; } body { background: ${light.bg}; overflow-x: hidden; overflow-y: auto; }
           ::placeholder { color: ${light.textMuted} !important; }
           @keyframes sj-spin { to { transform: rotate(360deg); } }
           @keyframes sj-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
@@ -794,7 +794,7 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'hidden', maxWidth: 540, margin: '0 auto' }}>
+      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(60px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'visible', maxWidth: 540, margin: '0 auto' }}>
         {/* BG circles */}
         <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,230,226,0.55) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
         <div style={{ position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,191,158,0.18) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
