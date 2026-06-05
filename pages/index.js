@@ -535,7 +535,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
   const toggleNight = () => { setIsNight(n => !n); setManualNight(true); };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: t.vBg, display: 'flex', flexDirection: 'column', zIndex: 100, transition: 'background 0.6s' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: t.vBg, display: 'flex', flexDirection: 'column', zIndex: 100, transition: 'background 0.6s', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', background: t.vHeader, borderBottom: `1px solid ${t.vHeaderBorder}`, backdropFilter: 'blur(12px)', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
         <div onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: '0.14em', color: t.vTextSub, cursor: 'pointer', textTransform: 'uppercase' }}>← Back</div>
@@ -629,7 +629,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
       )}
 
       {/* Bottom controls */}
-      <div style={{ background: t.vBottom, borderTop: `1px solid ${t.vBottomBorder}`, padding: '14px 18px 18px', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
+      <div style={{ background: t.vBottom, borderTop: `1px solid ${t.vBottomBorder}`, padding: '14px 18px', paddingBottom: 'calc(18px + env(safe-area-inset-bottom))', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
         {/* Scrubber */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <span style={{ fontSize: 9, letterSpacing: '0.1em', color: t.vTextMuted, minWidth: 28, fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'color 0.4s' }}>{cur}</span>
@@ -642,21 +642,24 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         </div>
 
         {/* Controls row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Speed */}
-          <div style={{ display: 'flex', gap: 5 }}>
-            {SPEEDS.map((s, i) => (
-              <button key={s.label} onClick={() => setSpeed(i)} style={{ fontSize: 9, letterSpacing: '0.08em', padding: '4px 9px', borderRadius: 20, border: `1px solid ${speed === i ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === i ? t.vSpeedActiveBg : 'transparent', color: speed === i ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{s.label}</button>
-            ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
+          {/* Speed — 3ボタンに絞って幅を節約 */}
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {SPEEDS.filter((_, i) => [1,2,4].includes(i)).map((s, idx) => {
+              const realIdx = [1,2,4][idx];
+              return (
+                <button key={s.label} onClick={() => setSpeed(realIdx)} style={{ fontSize: 9, letterSpacing: '0.06em', padding: '4px 7px', borderRadius: 20, border: `1px solid ${speed === realIdx ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === realIdx ? t.vSpeedActiveBg : 'transparent', color: speed === realIdx ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{s.label}</button>
+              );
+            })}
           </div>
 
           {/* Play controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
             {[
               { icon: '⏮', action: () => goTo(0, true) },
               { icon: '◀◀', action: () => goTo(Math.max(0, cur - 8)) },
             ].map((c, i) => (
-              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: t.vCtrl, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
+              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
             ))}
             <button onClick={() => setPlaying(p => !p)} style={{ border: 'none', width: 42, height: 42, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.vCtrlMainBg, boxShadow: `0 0 18px ${t.vCtrlMainShadow}`, color: '#fff', transition: 'background 0.3s, box-shadow 0.3s' }}>
               {playing ? '⏸' : '▶'}
@@ -665,7 +668,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
               { icon: '▶▶', action: () => goTo(Math.min(steps.length - 1, cur + 8)) },
               { icon: '⏭', action: () => goTo(steps.length - 1, true) },
             ].map((c, i) => (
-              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: t.vCtrl, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
+              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
             ))}
           </div>
 
@@ -794,7 +797,7 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(100px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'visible', maxWidth: 540, margin: '0 auto' }}>
+      <div style={{ background: light.bg, minHeight: '100vh', paddingBottom: 'calc(120px + env(safe-area-inset-bottom))', position: 'relative', overflow: 'visible', maxWidth: 540, margin: '0 auto' }}>
         {/* BG circles */}
         <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(200,230,226,0.55) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
         <div style={{ position: 'absolute', bottom: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,191,158,0.18) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
