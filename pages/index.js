@@ -215,32 +215,15 @@ const MODES = [
 ];
 
 // ── FLOATING ICON (L-path, 6462ms/loop) ──────────────────────────
-// 座標系: ページ全体(max-width:540px)の左上を原点とするpx座標
-// Phase A: 右欄外(x=560) → x=310  y=148(heroタイトルの高さ)  水平左移動
-// Phase B: x=310  y=148 → y=76(ヘッダー下の余白)  垂直上昇
-// Phase C: x=310 → x=-60  y=76  水平左移動して欄外へ消える
+// 座標系: ビューポート幅を基準にした比率座標
+// コンテナ幅(max 540px)に対する相対位置で計算し、PC/iPhoneで一致させる
 function FloatingIcon({ activeMode }) {
   const elRef = useRef(null);
   const rafRef = useRef(null);
   const tRef = useRef(0);
+  const containerRef = useRef(null);
 
   const DURATION = 6462;
-  // ページ座標 (px) — 赤線書き込み準拠:
-  // ヘッダー高さ ≒ 80px (Street Journey ロゴ行)
-  // サブテキスト "VIRTUAL ROUTE EXPLORER" ≒ y=96px
-  // "READY TO EXPLORE" eyebrow ≒ y=136px (hero padding 36 + margin)
-  // タイトル "Every street" 中段 ≒ y=176px  ← Phase A/B の折れ点Y
-  // ロゴとサブテキストの間の余白中央 ≒ y=88px  ← Phase C のY (EXIT_Y)
-  // TURN_X: "story." 右端より少し右 ≒ x=330px
-  // START_X: 右欄外 ≒ x=580px
-  // EXIT_X: 左欄外 ≒ x=-60px
-  const START_X = 580, TURN_X = 330, TURN_Y = 176, EXIT_Y = 88, EXIT_X = -60;
-  const distA = START_X - TURN_X;   // 250
-  const distB = TURN_Y - EXIT_Y;    // 88
-  const distC = TURN_X - EXIT_X;    // 390
-  const total = distA + distB + distC;
-  const tA = distA / total;
-  const tB = tA + distB / total;
 
   useEffect(() => {
     tRef.current = 0;
@@ -249,6 +232,20 @@ function FloatingIcon({ activeMode }) {
       const dt = now - last; last = now;
       tRef.current = (tRef.current + dt / DURATION) % 1;
       const t = tRef.current;
+
+      // コンテナ幅を毎フレーム取得（リサイズ対応）
+      const W = Math.min(window.innerWidth, 540);
+      // 540px基準の座標をコンテナ幅にスケール
+      const scale = W / 540;
+      const START_X = 580 * scale, TURN_X = 330 * scale, TURN_Y = 176, EXIT_Y = 88, EXIT_X = -60 * scale;
+
+      const distA = START_X - TURN_X;
+      const distB = TURN_Y - EXIT_Y;
+      const distC = TURN_X - EXIT_X;
+      const total = distA + distB + distC;
+      const tA = distA / total;
+      const tB = tA + distB / total;
+
       let x, y, opacity;
       if (t < tA) {
         const p = t / tA;
@@ -274,7 +271,6 @@ function FloatingIcon({ activeMode }) {
 
   const Icon = MODES[activeMode].Icon;
   return (
-    // ページ全体を覆う絶対配置レイヤー（スクロールと無関係に画面固定ではなくページ基準）
     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}>
       <div ref={elRef} style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform, opacity', opacity: 0 }}>
         <Icon color={light.accent} size="large" />
@@ -536,24 +532,27 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: t.vBg, display: 'flex', flexDirection: 'column', zIndex: 100, transition: 'background 0.6s', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', background: t.vHeader, borderBottom: `1px solid ${t.vHeaderBorder}`, backdropFilter: 'blur(12px)', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
-        <div onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: '0.14em', color: t.vTextSub, cursor: 'pointer', textTransform: 'uppercase' }}>← Back</div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 15, fontWeight: 600, color: t.accent, letterSpacing: '0.04em', transition: 'color 0.4s' }}>{origin} → {destination}</div>
+      {/* Header — 2段レイアウト: 上段にBack/REC/時刻、下段にルート名 */}
+      <div style={{ background: t.vHeader, borderBottom: `1px solid ${t.vHeaderBorder}`, backdropFilter: 'blur(12px)', flexShrink: 0, transition: 'background 0.6s, border-color 0.6s' }}>
+        {/* 上段: Back / REC / 時刻 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
+          <div onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, letterSpacing: '0.14em', color: t.vTextSub, cursor: 'pointer', textTransform: 'uppercase', minWidth: 60 }}>← Back</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={toggleRecord} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, letterSpacing: '0.12em', background: isRecording ? 'rgba(231,111,81,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isRecording ? light.danger : 'rgba(42,157,143,0.2)'}`, color: isRecording ? light.danger : t.vTextSub, borderRadius: 20, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
+              {isRecording ? '⏹' : '⏺'}<span style={{ fontSize: 8 }}>{isRecording ? 'STOP' : 'REC'}</span>
+            </button>
+            <button onClick={toggleNight} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, background: isNight ? 'rgba(42,157,143,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isNight ? 'rgba(42,157,143,0.4)' : 'rgba(42,157,143,0.2)'}`, color: isNight ? '#4fc3b4' : '#2a9d8f', borderRadius: 20, padding: '4px 10px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
+              {isNight ? '🌙' : '☀️'}<span style={{ fontSize: 8 }}>{timeStr}</span>
+            </button>
+          </div>
+        </div>
+        {/* 下段: ルート名・モード */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 16px 10px', gap: 2 }}>
+          <div style={{ fontFamily: "'Zen Kaku Gothic New', sans-serif", fontSize: 13, fontWeight: 600, color: t.accent, letterSpacing: '0.03em', textAlign: 'center', lineHeight: 1.4, transition: 'color 0.4s' }}>{origin} → {destination}</div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.accent, opacity: 0.7, transition: 'color 0.4s' }}>
             {modeInfo.label} · {routeInfo?.distance || steps.length + ' waypoints'}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button onClick={toggleRecord} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.12em', background: isRecording ? 'rgba(231,111,81,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isRecording ? light.danger : 'rgba(42,157,143,0.2)'}`, color: isRecording ? light.danger : t.vTextSub, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
-            {isRecording ? '⏹' : '⏺'}<span style={{ fontSize: 8, letterSpacing: '0.12em' }}>{isRecording ? 'STOP' : 'REC'}</span>
-          </button>
-        </div>
-        <button onClick={toggleNight} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, letterSpacing: '0.14em', background: isNight ? 'rgba(42,157,143,0.15)' : 'rgba(42,157,143,0.08)', border: `1px solid ${isNight ? 'rgba(42,157,143,0.4)' : 'rgba(42,157,143,0.2)'}`, color: isNight ? '#4fc3b4' : '#2a9d8f', borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New', sans-serif", transition: 'all 0.3s' }}>
-          {isNight ? '🌙' : '☀️'}
-          <span style={{ fontSize: 8, letterSpacing: '0.12em' }}>{timeStr}</span>
-        </button>
       </div>
 
       {/* Street View area */}
@@ -653,22 +652,25 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
             })}
           </div>
 
-          {/* Play controls */}
+          {/* Play controls — flat SVG icons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
             {[
-              { icon: '⏮', action: () => goTo(0, true) },
-              { icon: '◀◀', action: () => goTo(Math.max(0, cur - 8)) },
+              { svg: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polygon points="2,2 2,14 6,8" fill="currentColor"/><rect x="7" y="2" width="2" height="12" fill="currentColor"/><rect x="11" y="2" width="2" height="12" fill="currentColor"/></svg>, action: () => goTo(0, true) },
+              { svg: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polygon points="8,2 2,8 8,14" fill="currentColor"/><polygon points="14,2 8,8 14,14" fill="currentColor"/></svg>, action: () => goTo(Math.max(0, cur - 8)) },
             ].map((c, i) => (
-              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
+              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.svg}</button>
             ))}
-            <button onClick={() => setPlaying(p => !p)} style={{ border: 'none', width: 42, height: 42, borderRadius: '50%', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.vCtrlMainBg, boxShadow: `0 0 18px ${t.vCtrlMainShadow}`, color: '#fff', transition: 'background 0.3s, box-shadow 0.3s' }}>
-              {playing ? '⏸' : '▶'}
+            <button onClick={() => setPlaying(p => !p)} style={{ border: 'none', width: 42, height: 42, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.vCtrlMainBg, boxShadow: `0 0 18px ${t.vCtrlMainShadow}`, color: '#fff', transition: 'background 0.3s, box-shadow 0.3s' }}>
+              {playing
+                ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="4" height="12" fill="currentColor"/><rect x="9" y="2" width="4" height="12" fill="currentColor"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polygon points="4,2 14,8 4,14" fill="currentColor"/></svg>
+              }
             </button>
             {[
-              { icon: '▶▶', action: () => goTo(Math.min(steps.length - 1, cur + 8)) },
-              { icon: '⏭', action: () => goTo(steps.length - 1, true) },
+              { svg: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><polygon points="8,2 14,8 8,14" fill="currentColor"/><polygon points="2,2 8,8 2,14" fill="currentColor"/></svg>, action: () => goTo(Math.min(steps.length - 1, cur + 8)) },
+              { svg: <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="7" y="2" width="2" height="12" fill="currentColor"/><rect x="11" y="2" width="2" height="12" fill="currentColor"/><polygon points="2,2 8,8 2,14" fill="currentColor"/></svg>, action: () => goTo(steps.length - 1, true) },
             ].map((c, i) => (
-              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.icon}</button>
+              <button key={i} onClick={c.action} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.vCtrl, padding: '6px 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>{c.svg}</button>
             ))}
           </div>
 
