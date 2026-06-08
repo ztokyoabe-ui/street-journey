@@ -398,6 +398,10 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
   const [routeMapSrc, setRouteMapSrc] = useState('');
   const [isNight, setIsNight] = useState(!getDayFlag());
   const [manualNight, setManualNight] = useState(false);
+  const [viewMode, setViewMode] = useState('sv');
+  const [mapReady, setMapReady] = useState(false);
+  const mapDivRef = useRef(null);
+  const gMapRef = useRef(null);
   const speedRef = useRef(1);
   const imgARef = useRef(null), imgBRef = useRef(null);
   const timerRef = useRef(null), minimapTimerRef = useRef(null);
@@ -530,6 +534,65 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
 
   const toggleNight = () => { setIsNight(n => !n); setManualNight(true); };
 
+  useEffect(() => {
+    if (viewMode !== '3d') return;
+    if (gMapRef.current) return;
+    const initMap = async () => {
+      try {
+        let scriptUrl;
+        if (window.__MAPS_SCRIPT_URL) {
+          scriptUrl = window.__MAPS_SCRIPT_URL;
+        } else {
+          const res = await fetch('/api/maps-init');
+          const data = await res.json();
+          scriptUrl = data.scriptUrl;
+          window.__MAPS_SCRIPT_URL = scriptUrl;
+        }
+        if (!window.google?.maps) {
+          await new Promise((resolve, reject) => {
+            if (document.querySelector('script[data-maps-js]')) {
+              const poll = setInterval(() => { if (window.google?.maps) { clearInterval(poll); resolve(); } }, 100);
+              return;
+            }
+            const s = document.createElement('script');
+            s.src = scriptUrl;
+            s.setAttribute('data-maps-js', '1');
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        if (!mapDivRef.current) return;
+        const lats = steps.map(s => s.lat);
+        const lngs = steps.map(s => s.lng);
+        const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+        const latSpan = Math.max(...lats) - Math.min(...lats);
+        const lngSpan = Math.max(...lngs) - Math.min(...lngs);
+        const span = Math.max(latSpan, lngSpan);
+        const zoom = span < 0.005 ? 17 : span < 0.02 ? 15 : span < 0.1 ? 13 : span < 0.5 ? 11 : 9;
+        const firstStep = steps[0];
+        const lastStep = steps[steps.length - 1];
+        const heading = Math.atan2(lastStep.lng - firstStep.lng, lastStep.lat - firstStep.lat) * 180 / Math.PI;
+        const map = new window.google.maps.Map(mapDivRef.current, {
+          center: { lat: centerLat, lng: centerLng },
+          zoom,
+          tilt: 45,
+          heading,
+          mapTypeId: 'satellite',
+          disableDefaultUI: false,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
+        gMapRef.current = map;
+        setMapReady(true);
+      } catch (e) { console.warn('3D map init failed:', e); }
+    };
+    initMap();
+  }, [viewMode, steps]);
+
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: t.vBg, display: 'flex', flexDirection: 'column', zIndex: 100, transition: 'background 0.6s', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       {/* Header — 2段レイアウト: 上段にBack/REC/時刻、下段にルート名 */}
@@ -562,19 +625,29 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
 
         {/* Real SV images */}
         <img ref={imgARef} src="" alt="" crossOrigin="anonymous"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, transition: 'opacity .45s' }} />
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, transition: 'opacity .45s', display: viewMode === '3d' ? 'none' : 'block' }} />
         <img ref={imgBRef} src="" alt="" crossOrigin="anonymous"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2, opacity: 0, transition: 'opacity .45s' }} />
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2, opacity: 0, transition: 'opacity .45s', display: viewMode === '3d' ? 'none' : 'block' }} />
 
         {/* Road scene placeholder (shows when no SV image loaded) */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, display: viewMode === '3d' ? 'none' : 'block' }}>
           <RoadScene isNight={isNight} />
+        </div>
+
+        {/* 3D Map overlay */}
+        <div ref={mapDivRef} style={{ position: 'absolute', inset: 0, zIndex: viewMode === '3d' ? 4 : -1, opacity: viewMode === '3d' ? 1 : 0, transition: 'opacity 0.4s', pointerEvents: viewMode === '3d' ? 'auto' : 'none' }}>
+          {viewMode === '3d' && !mapReady && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: t.vBg, gap: 12, zIndex: 5 }}>
+              <div style={{ width: 32, height: 32, border: `2px solid ${light.surfaceBorder}`, borderTopColor: light.accent, borderRadius: '50%', animation: 'sj-spin .7s linear infinite' }} />
+              <div style={{ fontSize: 11, color: light.textSub, fontFamily: "'Zen Kaku Gothic New',sans-serif", letterSpacing: '.08em' }}>3Dマップを読み込み中</div>
+            </div>
+          )}
         </div>
 
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160, background: 'linear-gradient(transparent, rgba(0,0,0,0.5))', pointerEvents: 'none', zIndex: 3 }} />
 
-        {/* SV label */}
-        <div style={{ position: 'absolute', top: 14, left: 18, fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.svLabel, border: `1px solid ${t.svLabelBorder}`, padding: '4px 10px', borderRadius: 4, backdropFilter: 'blur(4px)', zIndex: 5, transition: 'color 0.4s, border-color 0.4s' }}>Street View</div>
+        {/* SV / 3D label */}
+        <div style={{ position: 'absolute', top: 14, left: 18, fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.svLabel, border: `1px solid ${t.svLabelBorder}`, padding: '4px 10px', borderRadius: 4, backdropFilter: 'blur(4px)', zIndex: 5, transition: 'color 0.4s, border-color 0.4s', display: viewMode === '3d' ? 'none' : 'block' }}>Street View</div>
 
         {/* Coords */}
         {step.lat && <div style={{ position: 'absolute', bottom: 14, left: 18, fontSize: 9, letterSpacing: '0.1em', color: t.svCoords, zIndex: 5, transition: 'color 0.4s' }}>{step.lat?.toFixed(4)}° N, {step.lng?.toFixed(4)}° E</div>}
@@ -642,14 +715,23 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
 
         {/* Controls row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
-          {/* Speed — 3ボタンに絞って幅を節約 */}
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {SPEEDS.filter((_, i) => [1,2,4].includes(i)).map((s, idx) => {
-              const realIdx = [1,2,4][idx];
-              return (
-                <button key={s.label} onClick={() => setSpeed(realIdx)} style={{ fontSize: 9, letterSpacing: '0.06em', padding: '4px 7px', borderRadius: 20, border: `1px solid ${speed === realIdx ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === realIdx ? t.vSpeedActiveBg : 'transparent', color: speed === realIdx ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{s.label}</button>
-              );
-            })}
+          {/* Left: Speed + View toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {/* SV / 3D toggle */}
+            <div style={{ display: 'flex', borderRadius: 20, overflow: 'hidden', border: `1px solid ${t.vSpeedActiveBorder}`, flexShrink: 0 }}>
+              {[{ id: 'sv', label: 'SV' }, { id: '3d', label: '3D' }].map(({ id, label }) => (
+                <button key={id} onClick={() => setViewMode(id)} style={{ fontSize: 9, letterSpacing: '0.08em', padding: '4px 9px', border: 'none', background: viewMode === id ? light.accent : 'transparent', color: viewMode === id ? '#fff' : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{label}</button>
+              ))}
+            </div>
+            {/* Speed — 3ボタン */}
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {SPEEDS.filter((_, i) => [1,2,4].includes(i)).map((s, idx) => {
+                const realIdx = [1,2,4][idx];
+                return (
+                  <button key={s.label} onClick={() => setSpeed(realIdx)} style={{ fontSize: 9, letterSpacing: '0.06em', padding: '4px 7px', borderRadius: 20, border: `1px solid ${speed === realIdx ? t.vSpeedActiveBorder : t.vSpeedBorder}`, background: speed === realIdx ? t.vSpeedActiveBg : 'transparent', color: speed === realIdx ? t.vSpeedActiveText : t.vSpeedText, cursor: 'pointer', fontFamily: "'Zen Kaku Gothic New',sans-serif", transition: 'all 0.2s' }}>{s.label}</button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Play controls — flat SVG icons */}
@@ -874,3 +956,4 @@ export default function Home() {
     </>
   );
 }
+
