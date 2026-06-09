@@ -648,7 +648,7 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         {step.lat && <div style={{ position: 'absolute', bottom: 14, left: 18, fontSize: 9, letterSpacing: '0.1em', color: t.svCoords, zIndex: 5, transition: 'color 0.4s' }}>{step.lat?.toFixed(4)}° N, {step.lng?.toFixed(4)}° E</div>}
 
         {/* Minimap */}
-        <div style={{ position: 'absolute', bottom: 12, right: 14, width: 100, borderRadius: 8, overflow: 'hidden', border: `1px solid ${t.minimapBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.15)', zIndex: 8, background: t.minimapBg, transition: 'border-color 0.4s' }}>
+        <div style={{ position: 'absolute', bottom: 12, right: 14, width: 100, borderRadius: 8, overflow: 'hidden', border: `1px solid ${t.minimapBorder}`, boxShadow: '0 2px 12px rgba(0,0,0,0.15)', zIndex: 8, background: t.minimapBg, transition: 'border-color 0.4s', display: viewMode === '3d' ? 'none' : 'block' }}>
           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.1)' }}>
             {[{ key: 'current', label: '現在地' }, { key: 'route', label: 'ルート' }].map(({ key, label }) => (
               <button key={key} onClick={() => setMinimapMode(key)} style={{ flex: 1, padding: '3px 0', border: 'none', cursor: 'pointer', background: minimapMode === key ? 'rgba(42,157,143,0.15)' : 'transparent', borderBottom: minimapMode === key ? `2px solid ${light.accent}` : '2px solid transparent', fontFamily: "'Zen Kaku Gothic New',sans-serif", fontSize: 7, color: minimapMode === key ? light.accent : t.textMuted, letterSpacing: '.05em', transition: 'all .15s' }}>{label}</button>
