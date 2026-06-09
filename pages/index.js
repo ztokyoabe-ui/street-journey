@@ -630,14 +630,14 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         </div>
 
         {/* 3D Map overlay */}
-        <div ref={mapDivRef} style={{ position: 'absolute', inset: 0, zIndex: viewMode === '3d' ? 4 : -1, opacity: viewMode === '3d' ? 1 : 0, transition: 'opacity 0.4s', pointerEvents: viewMode === '3d' ? 'auto' : 'none' }}>
-          {viewMode === '3d' && !mapReady && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: t.vBg, gap: 12, zIndex: 5 }}>
-              <div style={{ width: 32, height: 32, border: `2px solid ${light.surfaceBorder}`, borderTopColor: light.accent, borderRadius: '50%', animation: 'sj-spin .7s linear infinite' }} />
-              <div style={{ fontSize: 11, color: light.textSub, fontFamily: "'Zen Kaku Gothic New',sans-serif", letterSpacing: '.08em' }}>3Dマップを読み込み中</div>
-            </div>
-          )}
-        </div>
+        {/* 3D map loading spinner — outside mapDivRef to avoid React/Maps DOM conflict */}
+        {viewMode === '3d' && !mapReady && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: t.vBg, gap: 12, zIndex: 6 }}>
+            <div style={{ width: 32, height: 32, border: `2px solid ${light.surfaceBorder}`, borderTopColor: light.accent, borderRadius: '50%', animation: 'sj-spin .7s linear infinite' }} />
+            <div style={{ fontSize: 11, color: light.textSub, fontFamily: "'Zen Kaku Gothic New',sans-serif", letterSpacing: '.08em' }}>3Dマップを読み込み中</div>
+          </div>
+        )}
+        <div ref={mapDivRef} style={{ position: 'absolute', inset: 0, zIndex: viewMode === '3d' ? 4 : -1, opacity: viewMode === '3d' ? 1 : 0, transition: 'opacity 0.4s', pointerEvents: viewMode === '3d' ? 'auto' : 'none' }} />
 
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160, background: 'linear-gradient(transparent, rgba(0,0,0,0.5))', pointerEvents: 'none', zIndex: 3 }} />
 
