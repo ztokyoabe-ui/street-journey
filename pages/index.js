@@ -537,31 +537,31 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
   useEffect(() => {
     if (viewMode !== '3d') return;
     if (gMapRef.current) return;
+
+    const loadMapsScript = async () => {
+      if (window.google?.maps) return;
+      if (window.__mapsScriptLoading) {
+        await new Promise(resolve => {
+          const poll = setInterval(() => { if (window.google?.maps) { clearInterval(poll); resolve(); } }, 100);
+        });
+        return;
+      }
+      window.__mapsScriptLoading = true;
+      const res = await fetch('/api/maps-init');
+      const data = await res.json();
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = data.scriptUrl;
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    };
+
     const initMap = async () => {
       try {
-        let scriptUrl;
-        if (window.__MAPS_SCRIPT_URL) {
-          scriptUrl = window.__MAPS_SCRIPT_URL;
-        } else {
-          const res = await fetch('/api/maps-init');
-          const data = await res.json();
-          scriptUrl = data.scriptUrl;
-          window.__MAPS_SCRIPT_URL = scriptUrl;
-        }
-        if (!window.google?.maps) {
-          await new Promise((resolve, reject) => {
-            if (document.querySelector('script[data-maps-js]')) {
-              const poll = setInterval(() => { if (window.google?.maps) { clearInterval(poll); resolve(); } }, 100);
-              return;
-            }
-            const s = document.createElement('script');
-            s.src = scriptUrl;
-            s.setAttribute('data-maps-js', '1');
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
+        await loadMapsScript();
         if (!mapDivRef.current) return;
         const lats = steps.map(s => s.lat);
         const lngs = steps.map(s => s.lng);
@@ -571,15 +571,10 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         const lngSpan = Math.max(...lngs) - Math.min(...lngs);
         const span = Math.max(latSpan, lngSpan);
         const zoom = span < 0.005 ? 17 : span < 0.02 ? 15 : span < 0.1 ? 13 : span < 0.5 ? 11 : 9;
-        const firstStep = steps[0];
-        const lastStep = steps[steps.length - 1];
-        const heading = Math.atan2(lastStep.lng - firstStep.lng, lastStep.lat - firstStep.lat) * 180 / Math.PI;
         const map = new window.google.maps.Map(mapDivRef.current, {
           center: { lat: centerLat, lng: centerLng },
           zoom,
-          tilt: 45,
-          heading,
-          mapTypeId: 'satellite',
+          mapTypeId: 'hybrid',
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
