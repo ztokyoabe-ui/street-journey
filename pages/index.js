@@ -571,15 +571,22 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
         const lngSpan = Math.max(...lngs) - Math.min(...lngs);
         const span = Math.max(latSpan, lngSpan);
         const zoom = span < 0.005 ? 17 : span < 0.02 ? 15 : span < 0.1 ? 13 : span < 0.5 ? 11 : 9;
-        const map = new window.google.maps.Map(mapDivRef.current, {
+        const mapOptions = {
           center: { lat: centerLat, lng: centerLng },
           zoom,
-          mapTypeId: 'hybrid',
+          mapTypeId: 'satellite',
+          tilt: 45,
+          heading: 0,
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          renderingType: window.google.maps.RenderingType?.VECTOR || 'VECTOR',
+        };
+        const map = new window.google.maps.Map(mapDivRef.current, mapOptions);
+        window.google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
+          map.setTilt(45);
         });
         gMapRef.current = map;
         setMapReady(true);
