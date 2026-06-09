@@ -563,20 +563,15 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
       try {
         await loadMapsScript();
         if (!mapDivRef.current) return;
-        const lats = steps.map(s => s.lat);
-        const lngs = steps.map(s => s.lng);
-        const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-        const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-        const latSpan = Math.max(...lats) - Math.min(...lats);
-        const lngSpan = Math.max(...lngs) - Math.min(...lngs);
-        const span = Math.max(latSpan, lngSpan);
-        const zoom = span < 0.005 ? 17 : span < 0.02 ? 15 : span < 0.1 ? 13 : span < 0.5 ? 11 : 9;
+        const firstStep = steps[0] || { lat: 35.6812, lng: 139.7671 };
+        const secondStep = steps[1] || firstStep;
+        const initHeading = Math.atan2(secondStep.lng - firstStep.lng, secondStep.lat - firstStep.lat) * 180 / Math.PI;
         const mapOptions = {
-          center: { lat: centerLat, lng: centerLng },
-          zoom,
+          center: { lat: firstStep.lat, lng: firstStep.lng },
+          zoom: 17,
           mapTypeId: 'satellite',
-          tilt: 45,
-          heading: 0,
+          tilt: 60,
+          heading: initHeading,
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: false,
@@ -594,6 +589,24 @@ function Viewer({ steps, origin, destination, travelModeId, routeInfo, onClose }
     };
     initMap();
   }, [viewMode, steps]);
+
+  // 3Dマップをcurに連動してカメラ追従
+  useEffect(() => {
+    const map = gMapRef.current;
+    if (!map || viewMode !== '3d') return;
+    const step = steps[cur];
+    if (!step) return;
+    const prev = steps[Math.max(0, cur - 1)];
+    const heading = prev && (prev.lat !== step.lat || prev.lng !== step.lng)
+      ? Math.atan2(step.lng - prev.lng, step.lat - prev.lat) * 180 / Math.PI
+      : map.getHeading() || 0;
+    map.moveCamera({
+      center: { lat: step.lat, lng: step.lng },
+      zoom: 17,
+      tilt: 60,
+      heading,
+    });
+  }, [cur, viewMode, steps]);
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: t.vBg, display: 'flex', flexDirection: 'column', zIndex: 100, transition: 'background 0.6s', paddingTop: 'env(safe-area-inset-top)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
